@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.pyo
+tasks.db
+tasks.db-wal
+tasks.db-shm
+.env
+*.log
