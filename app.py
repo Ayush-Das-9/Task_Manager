@@ -13,9 +13,9 @@ app = Flask(__name__, static_folder='.', static_url_path='')
 
 # ── MongoDB Connection ────────────────────────────────────────────────
 
-MONGO_URI = os.environ.get('MONGO_URI', 'mongodb://localhost:27017')
+MONGO_URI = os.environ.get('MONGO_URI', 'mongodb+srv://ayush:Ayush_108@cluster0.sj8se91.mongodb.net/')
 client = MongoClient(MONGO_URI)
-db = client['task_manager']
+db = client['task_manager'] 
 tasks_col = db['tasks']
 categories_col = db['categories']
 
