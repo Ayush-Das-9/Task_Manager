@@ -12,7 +12,7 @@ from flask import Flask, request, jsonify, send_from_directory
 from pymongo import MongoClient
 from learner import predict_category, predict_time, get_daily_insights
 
-app = Flask(__name__, static_folder='.', static_url_path='')
+app = Flask(__name__, static_folder='dist', static_url_path='')
 
 # ── MongoDB Connection ────────────────────────────────────────────────
 
@@ -76,9 +76,14 @@ def enrich_tasks(cursor):
 
 # ── Serve Frontend ───────────────────────────────────────────────────
 
-@app.route('/')
-def index():
-    return send_from_directory('.', 'index.html')
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve_react(path):
+    """Serve React app from dist/ folder."""
+    if path and (path.startswith('api/') or os.path.exists(os.path.join(app.static_folder, path))):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, 'index.html')
 
 
 # ── Task API ─────────────────────────────────────────────────────────

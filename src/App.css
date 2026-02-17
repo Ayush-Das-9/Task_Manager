@@ -1,0 +1,831 @@
+/* ── Smart Task Manager — Light Theme ─────────────────────────────── */
+
+:root {
+    --bg: #f5f5f5;
+    --bg-card: #ffffff;
+    --bg-hover: #f0f0f0;
+    --text: #1a1a1a;
+    --text-secondary: #888;
+    --border: #e0e0e0;
+    --accent: #4f46e5;
+    --accent-light: #eef2ff;
+    --danger: #ef4444;
+    --danger-light: #fef2f2;
+    --success: #10b981;
+    --success-light: #ecfdf5;
+    --warning: #f59e0b;
+    --warning-light: #fffbeb;
+    --radius: 8px;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    min-height: 100vh;
+}
+
+/* ── Reminder Banner ──────────────────────────────────────────────── */
+
+.reminder-banner {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--warning-light);
+    border-bottom: 2px solid var(--warning);
+    padding: 10px 16px;
+    animation: slideDown 0.3s ease;
+}
+
+.reminder-banner.overdue {
+    background: var(--danger-light);
+    border-color: var(--danger);
+}
+
+.reminder-content {
+    max-width: 800px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.reminder-icon {
+    font-size: 1.2em;
+}
+
+.reminder-list {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 0.88em;
+}
+
+.reminder-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.reminder-item .due-label {
+    font-weight: 600;
+}
+
+.reminder-close {
+    background: none;
+    border: none;
+    font-size: 1.2em;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 4px;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* ── App Container ────────────────────────────────────────────────── */
+
+.app-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px 16px;
+}
+
+/* ── Header ───────────────────────────────────────────────────────── */
+
+.app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.app-header h1 {
+    font-size: 1.4em;
+    font-weight: 700;
+}
+
+.header-stats {
+    display: flex;
+    gap: 8px;
+}
+
+.stat-badge {
+    font-size: 0.78em;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: var(--accent-light);
+    color: var(--accent);
+    font-weight: 600;
+}
+
+/* ── Add Task Form ────────────────────────────────────────────────── */
+
+.add-task-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow);
+}
+
+.form-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.form-row:last-child {
+    margin-bottom: 0;
+}
+
+.form-details {
+    flex-wrap: wrap;
+}
+
+#task-title {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 1em;
+    font-family: var(--font);
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+#task-title:focus {
+    border-color: var(--accent);
+}
+
+.btn-add {
+    padding: 10px 20px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font);
+    transition: opacity 0.2s;
+}
+
+.btn-add:hover {
+    opacity: 0.9;
+}
+
+select,
+input[type="datetime-local"],
+input[type="number"] {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--font);
+    font-size: 0.88em;
+    outline: none;
+    background: var(--bg-card);
+}
+
+select:focus,
+input:focus {
+    border-color: var(--accent);
+}
+
+#task-category {
+    min-width: 130px;
+}
+
+.countdown-input {
+    width: 90px;
+}
+
+/* ── Prediction Chips ─────────────────────────────────────────────── */
+
+.prediction-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-top: 8px;
+    margin-top: 4px;
+    border-top: 1px dashed var(--border);
+}
+
+.pred-chip {
+    font-size: 0.8em;
+    padding: 3px 10px;
+    border-radius: 12px;
+    background: var(--accent-light);
+    color: var(--accent);
+    cursor: pointer;
+    transition: background 0.15s;
+    font-weight: 500;
+}
+
+.pred-chip:hover {
+    background: #ddd8ff;
+}
+
+/* ── Insights ─────────────────────────────────────────────────────── */
+
+.insights-section {
+    margin-bottom: 14px;
+}
+
+.insights-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-family: var(--font);
+    font-size: 0.92em;
+    color: var(--text);
+}
+
+.insights-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 var(--radius) var(--radius);
+    padding: 14px;
+}
+
+.insight-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.88em;
+}
+
+.insight-item:last-child {
+    border-bottom: none;
+}
+
+.insight-icon {
+    font-size: 1em;
+}
+
+.insight-stats {
+    display: flex;
+    gap: 16px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+}
+
+.insight-stat {
+    text-align: center;
+}
+
+.insight-stat-value {
+    font-size: 1.3em;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.insight-stat-label {
+    font-size: 0.72em;
+    color: var(--text-secondary);
+}
+
+/* ── Category Tabs ────────────────────────────────────────────────── */
+
+.category-management {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    overflow-x: auto;
+}
+
+.category-tabs {
+    display: flex;
+    gap: 4px;
+    flex: 1;
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+
+.cat-tab {
+    padding: 5px 13px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: var(--bg-card);
+    cursor: pointer;
+    font-family: var(--font);
+    font-size: 0.83em;
+    white-space: nowrap;
+    transition: all 0.15s;
+}
+
+.cat-tab:hover {
+    background: var(--bg-hover);
+}
+
+.cat-tab.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+.btn-manage-cats {
+    padding: 5px 12px;
+    border: 1px dashed var(--border);
+    border-radius: 20px;
+    background: none;
+    cursor: pointer;
+    font-family: var(--font);
+    font-size: 0.83em;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.btn-manage-cats:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* ── Task Cards ───────────────────────────────────────────────────── */
+
+.tasks-section {
+    margin-bottom: 40px;
+}
+
+.task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.task-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    transition: box-shadow 0.15s;
+}
+
+.task-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.task-card.overdue {
+    border-left: 3px solid var(--danger);
+}
+
+.task-card.due-soon {
+    border-left: 3px solid var(--warning);
+}
+
+.task-check {
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--border);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s;
+    font-size: 0.7em;
+}
+
+.task-check:hover {
+    border-color: var(--success);
+    background: var(--success-light);
+}
+
+.task-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.task-title {
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.task-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 3px;
+    flex-wrap: wrap;
+}
+
+.task-category-tag {
+    font-size: 0.73em;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 500;
+}
+
+.task-due {
+    font-size: 0.73em;
+    color: var(--text-secondary);
+}
+
+.task-due.overdue {
+    color: var(--danger);
+    font-weight: 600;
+}
+
+.task-due.due-soon {
+    color: var(--warning);
+    font-weight: 600;
+}
+
+.task-estimate {
+    font-size: 0.73em;
+    color: var(--text-secondary);
+}
+
+/* ── Timer — Exciting Design ──────────────────────────────────────── */
+
+.task-timer {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.timer-ring {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
+    border-radius: 8px;
+    background: var(--bg);
+    transition: all 0.3s;
+}
+
+/* When timer is spinning — glowing animated border */
+.timer-ring.spinning {
+    background: linear-gradient(135deg, #4f46e5, #06b6d4, #8b5cf6, #4f46e5);
+    background-size: 300% 300%;
+    animation: timerGlow 2s ease-in-out infinite;
+    padding: 2px;
+    box-shadow: 0 0 12px rgba(79, 70, 229, 0.3);
+}
+
+.timer-ring.spinning .timer-display {
+    background: var(--bg-card);
+    color: var(--accent);
+    font-weight: 700;
+}
+
+@keyframes timerGlow {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+.timer-display {
+    font-family: 'Courier New', monospace;
+    font-size: 0.88em;
+    font-weight: 600;
+    min-width: 58px;
+    text-align: center;
+    padding: 5px 10px;
+    border-radius: 6px;
+    background: var(--bg);
+    transition: all 0.2s;
+}
+
+.timer-display.timer-active {
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.timer-display.countdown-done {
+    background: var(--danger-light);
+    color: var(--danger);
+    animation: pulse 0.8s infinite;
+    font-weight: 700;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.6;
+        transform: scale(0.97);
+    }
+}
+
+.timer-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 0.78em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+
+.timer-btn:hover {
+    opacity: 0.8;
+    transform: scale(1.1);
+}
+
+.timer-btn.play {
+    background: var(--success-light);
+    color: var(--success);
+}
+
+.timer-btn.pause {
+    background: var(--warning-light);
+    color: var(--warning);
+}
+
+.timer-btn.reset {
+    background: var(--bg);
+    color: var(--text-secondary);
+}
+
+/* ── Task Actions ─────────────────────────────────────────────────── */
+
+.task-delete {
+    width: 26px;
+    height: 26px;
+    border: none;
+    border-radius: var(--radius);
+    background: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.9em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    flex-shrink: 0;
+    opacity: 0.4;
+}
+
+.task-card:hover .task-delete {
+    opacity: 1;
+}
+
+.task-delete:hover {
+    background: var(--danger-light);
+    color: var(--danger);
+}
+
+/* ── Completed Section ────────────────────────────────────────────── */
+
+.completed-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 14px;
+    margin-top: 14px;
+    margin-bottom: 6px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 0.88em;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.completed-header:hover {
+    background: var(--bg-hover);
+}
+
+.task-card.completed {
+    opacity: 0.5;
+}
+
+.task-card.completed .task-title {
+    text-decoration: line-through;
+}
+
+.task-card.completed .task-check {
+    background: var(--success);
+    border-color: var(--success);
+    color: white;
+}
+
+/* ── Modal ─────────────────────────────────────────────────────────── */
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+}
+
+.modal-content {
+    background: var(--bg-card);
+    padding: 22px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    width: 90%;
+    max-width: 380px;
+}
+
+.modal-content h3 {
+    margin-bottom: 14px;
+    font-size: 1.05em;
+}
+
+.modal-form {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.modal-form input[type="text"] {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--font);
+}
+
+.modal-form input[type="color"] {
+    width: 38px;
+    height: 36px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2px;
+    cursor: pointer;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.btn-close {
+    padding: 8px 16px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-family: var(--font);
+    width: 100%;
+    margin-top: 10px;
+}
+
+.btn-close:hover {
+    background: var(--bg-hover);
+}
+
+.category-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.cat-list-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 0.88em;
+}
+
+.cat-list-item .cat-color-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.cat-list-item .cat-name {
+    flex: 1;
+}
+
+.cat-list-item .cat-delete {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 1em;
+}
+
+.cat-list-item .cat-delete:hover {
+    color: var(--danger);
+}
+
+.modal-content label {
+    display: block;
+    font-size: 0.88em;
+    color: var(--text-secondary);
+    margin-bottom: 5px;
+}
+
+.modal-content input[type="number"] {
+    width: 100%;
+    padding: 8px 12px;
+    margin-bottom: 6px;
+}
+
+.modal-content p {
+    font-weight: 500;
+    margin-bottom: 10px;
+}
+
+/* ── Utilities ─────────────────────────────────────────────────────── */
+.hidden {
+    display: none !important;
+}
+
+/* ── Responsive ────────────────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+    .app-container {
+        padding: 12px 10px;
+    }
+
+    .app-header h1 {
+        font-size: 1.15em;
+    }
+
+    .form-details {
+        flex-direction: column;
+    }
+
+    .form-details select,
+    .form-details input {
+        width: 100%;
+    }
+
+    .task-card {
+        flex-wrap: wrap;
+    }
+
+    .task-timer {
+        width: 100%;
+        justify-content: flex-start;
+        margin-top: 6px;
+    }
+}

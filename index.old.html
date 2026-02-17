@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tasks</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Reminder Banner -->
+    <div id="reminder-banner" class="reminder-banner hidden">
+        <div class="reminder-content">
+            <span class="reminder-icon">⏰</span>
+            <div id="reminder-list" class="reminder-list"></div>
+            <button class="reminder-close" onclick="closeReminders()">✕</button>
+        </div>
+    </div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <h1>📋 Task Manager</h1>
+            <div class="header-stats">
+                <span id="stat-active" class="stat-badge">0 active</span>
+                <span id="stat-completed" class="stat-badge">0 done</span>
+            </div>
+        </header>
+
+        <!-- Add Task Form -->
+        <section class="add-task-section">
+            <form id="add-task-form" class="add-task-form">
+                <div class="form-row">
+                    <input type="text" id="task-title" placeholder="Add a task..." autocomplete="off" required>
+                    <button type="submit" class="btn-add">Add</button>
+                </div>
+                <div class="form-row form-details">
+                    <select id="task-category">
+                        <option value="">Category...</option>
+                    </select>
+                    <input type="datetime-local" id="task-due" placeholder="Due date">
+                    <select id="task-timer-type">
+                        <option value="stopwatch">⏱ Stopwatch</option>
+                        <option value="countdown">⏳ Countdown</option>
+                    </select>
+                    <input type="number" id="task-countdown-mins" placeholder="Minutes" min="1"
+                        class="countdown-input hidden">
+                </div>
+                <div id="prediction-bar" class="prediction-bar hidden">
+                    <span id="pred-category" class="pred-chip"></span>
+                    <span id="pred-time" class="pred-chip"></span>
+                </div>
+            </form>
+        </section>
+
+        <section class="insights-section">
+            <button class="insights-toggle" onclick="toggleInsights()">
+                💡 Insights <span id="insights-arrow">▸</span>
+            </button>
+            <div id="insights-panel" class="insights-panel hidden">
+                <div id="insights-content"></div>
+            </div>
+        </section>
+
+        <!-- Category Management -->
+        <section class="category-management">
+            <div class="category-tabs" id="category-tabs">
+                <button class="cat-tab active" data-category="all">All</button>
+            </div>
+            <button class="btn-manage-cats" onclick="showCategoryModal()">+ Category</button>
+        </section>
+
+        <!-- Task Lists -->
+        <section class="tasks-section">
+            <div id="active-tasks" class="task-list"></div>
+
+            <div class="completed-header" onclick="toggleCompleted()">
+                <span>✓ Completed</span>
+                <span id="completed-arrow">▸</span>
+            </div>
+            <div id="completed-tasks" class="task-list hidden"></div>
+        </section>
+    </div>
+
+    <!-- Category Modal -->
+    <div id="category-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Manage Categories</h3>
+            <div class="modal-form">
+                <input type="text" id="new-cat-name" placeholder="Category name">
+                <input type="color" id="new-cat-color" value="#6366f1">
+                <button onclick="addCategory()" class="btn-add">Add</button>
+            </div>
+            <div id="category-list" class="category-list"></div>
+            <button onclick="closeCategoryModal()" class="btn-close">Close</button>
+        </div>
+    </div>
+
+    <!-- Complete Task Modal -->
+    <div id="complete-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Done!</h3>
+            <p id="complete-task-title"></p>
+            <label>Time spent (min)</label>
+            <input type="number" id="actual-time-input" min="0" placeholder="30">
+            <div class="modal-buttons">
+                <button onclick="confirmComplete()" class="btn-add">Done</button>
+                <button onclick="closeCompleteModal()" class="btn-close">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/timer.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>

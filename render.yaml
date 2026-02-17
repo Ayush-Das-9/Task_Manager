@@ -2,10 +2,21 @@ services:
   - type: web
     name: task-manager
     runtime: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: |
+      # Install Node.js for React build
+      curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+      apt-get install -y nodejs
+      # Build React frontend
+      npm install
+      npm run build
+      # Install Python dependencies
+      pip install -r requirements.txt
     startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
       - key: MONGO_URI
         sync: false
+      - key: RENDER_EXTERNAL_URL
+        value: https://task-manager-2h25.onrender.com
+
