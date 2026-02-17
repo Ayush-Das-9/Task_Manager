@@ -5,7 +5,7 @@ __pycache__/
 venv/
 .venv/
 node_modules/
-dist/
+# dist/  # Temporarily commit dist for Render deployment
 *.db
 *.db-wal
 *.db-shm

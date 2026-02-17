@@ -2,18 +2,11 @@ services:
   - type: web
     name: task-manager
     runtime: python
-    buildCommand: |
-      # Build React frontend (Node.js available via NODE_VERSION env var)
-      npm install
-      npm run build
-      # Install Python dependencies
-      pip install -r requirements.txt
+    buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
-      - key: NODE_VERSION
-        value: 18.17.0
       - key: MONGO_URI
         sync: false
       - key: RENDER_EXTERNAL_URL

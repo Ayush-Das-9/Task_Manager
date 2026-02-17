@@ -76,6 +76,17 @@ def enrich_tasks(cursor):
 
 # ── Serve Frontend ───────────────────────────────────────────────────
 
+# Debug: Check if dist folder exists
+if not os.path.exists('dist'):
+    print("WARNING: dist/ folder not found! React build may have failed.")
+    print(f"Current directory: {os.getcwd()}")
+    print(f"Files in current directory: {os.listdir('.')}")
+elif not os.path.exists('dist/index.html'):
+    print("WARNING: dist/index.html not found! React build incomplete.")
+    print(f"Files in dist/: {os.listdir('dist')}")
+else:
+    print(f"✓ React build found: dist/index.html exists")
+
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve_react(path):
