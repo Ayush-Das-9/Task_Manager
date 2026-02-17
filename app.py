@@ -3,6 +3,9 @@ Smart Task Manager — Flask Server + MongoDB
 """
 
 import os
+import threading
+import time
+import urllib.request
 from datetime import datetime, timedelta
 from bson import ObjectId
 from flask import Flask, request, jsonify, send_from_directory
@@ -284,6 +287,22 @@ def insights():
             'completed_tasks': done_count,
         }
     })
+
+
+# ── Keep alive (ping self every 14 min) ──────────────────────────────
+
+def keep_alive():
+    url = os.environ.get('RENDER_EXTERNAL_URL')
+    if not url:
+        return
+    while True:
+        time.sleep(840)  # 14 minutes
+        try:
+            urllib.request.urlopen(url)
+        except:
+            pass
+
+threading.Thread(target=keep_alive, daemon=True).start()
 
 
 # ── Start Server ─────────────────────────────────────────────────────
