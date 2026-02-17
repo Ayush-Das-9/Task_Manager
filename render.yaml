@@ -3,10 +3,7 @@ services:
     name: task-manager
     runtime: python
     buildCommand: |
-      # Install Node.js for React build
-      curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
-      apt-get install -y nodejs
-      # Build React frontend
+      # Build React frontend (Node.js available via NODE_VERSION env var)
       npm install
       npm run build
       # Install Python dependencies
@@ -15,8 +12,11 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
+      - key: NODE_VERSION
+        value: 18.17.0
       - key: MONGO_URI
         sync: false
       - key: RENDER_EXTERNAL_URL
         value: https://task-manager-2h25.onrender.com
+
 
