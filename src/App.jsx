@@ -7,6 +7,8 @@ import ReminderBanner from './components/ReminderBanner'
 import InsightsPanel from './components/InsightsPanel'
 import CategoryModal from './components/CategoryModal'
 import CompleteTaskModal from './components/CompleteTaskModal'
+import StarCounter from './components/StarCounter'
+import StarBurst from './components/StarBurst'
 
 function App() {
     const [tasks, setTasks] = useState([])
@@ -19,11 +21,17 @@ function App() {
     const [showInsights, setShowInsights] = useState(false)
     const [showCompleted, setShowCompleted] = useState(false)
 
+    // ⭐ Star system state
+    const [todayStars, setTodayStars] = useState(0)
+    const [starAnimating, setStarAnimating] = useState(false)
+    const [starBurst, setStarBurst] = useState(null) // { starsEarned, taskTitle }
+
     // Load data
     useEffect(() => {
         loadCategories()
         loadTasks()
         checkReminders()
+        loadTodayStars()
 
         const reminderInterval = setInterval(checkReminders, 60000)
         const syncInterval = setInterval(syncTasks, 10000)
@@ -62,6 +70,13 @@ function App() {
         } catch (e) { }
     }
 
+    async function loadTodayStars() {
+        try {
+            const data = await API.getTodayStars()
+            setTodayStars(data.total_stars || 0)
+        } catch (e) { console.error(e) }
+    }
+
     // Task actions
     async function handleAddTask(taskData) {
         try {
@@ -79,6 +94,26 @@ function App() {
             const updated = await API.updateTask(id, data)
             setTasks(prev => prev.map(t => t.id === id ? updated : t))
             setShowCompleteModal(false)
+
+            // ⭐ Try to earn stars (server will validate)
+            const task = completingTask
+            if (task && task.timer_type === 'countdown' && task.countdown_completed) {
+                try {
+                    const result = await API.earnStars(id)
+                    // Trigger star burst animation!
+                    setStarBurst({
+                        starsEarned: result.stars_earned,
+                        taskTitle: result.task_title
+                    })
+                    setStarAnimating(true)
+                    setTodayStars(result.total_today)
+                    setTimeout(() => setStarAnimating(false), 2000)
+                } catch (starErr) {
+                    // No stars earned (didn't meet conditions) — that's fine
+                    console.log('No stars earned:', starErr.message)
+                }
+            }
+
             setCompletingTask(null)
         } catch (e) {
             alert(e.message)
@@ -87,7 +122,11 @@ function App() {
 
     async function handleReopenTask(id) {
         try {
-            const updated = await API.updateTask(id, { status: 'active', timer_seconds: 0 })
+            const updated = await API.updateTask(id, {
+                status: 'active',
+                timer_seconds: 0,
+                countdown_completed: false
+            })
             setTasks(prev => prev.map(t => t.id === id ? updated : t))
         } catch (e) {
             alert(e.message)
@@ -106,6 +145,11 @@ function App() {
 
     async function handleTimerUpdate() {
         await loadTasks()
+    }
+
+    function handleCountdownComplete(task) {
+        // Refresh task data to get updated countdown_completed flag
+        loadTasks()
     }
 
     function openCompleteModal(task) {
@@ -141,6 +185,10 @@ function App() {
                 <header className="app-header">
                     <h1>📋 Task Manager</h1>
                     <div className="header-stats">
+                        <StarCounter
+                            totalStars={todayStars}
+                            isAnimating={starAnimating}
+                        />
                         <span className="stat-badge">{stats.active} active</span>
                         <span className="stat-badge">{stats.completed} done</span>
                     </div>
@@ -173,6 +221,7 @@ function App() {
                                     onComplete={() => openCompleteModal(task)}
                                     onDelete={() => handleDeleteTask(task.id)}
                                     onTimerUpdate={handleTimerUpdate}
+                                    onCountdownComplete={handleCountdownComplete}
                                 />
                             ))
                         ) : (
@@ -220,6 +269,15 @@ function App() {
                         setCompletingTask(null)
                     }}
                     onConfirm={handleCompleteTask}
+                />
+            )}
+
+            {/* ⭐ Star Burst Animation Overlay */}
+            {starBurst && (
+                <StarBurst
+                    starsEarned={starBurst.starsEarned}
+                    taskTitle={starBurst.taskTitle}
+                    onDone={() => setStarBurst(null)}
                 />
             )}
         </>

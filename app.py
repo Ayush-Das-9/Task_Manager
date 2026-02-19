@@ -21,6 +21,7 @@ client = MongoClient(MONGO_URI)
 db = client['task_manager'] 
 tasks_col = db['tasks']
 categories_col = db['categories']
+stars_col = db['stars']
 
 # ── Init defaults ─────────────────────────────────────────────────────
 
@@ -121,6 +122,15 @@ def create_task():
     if not title:
         return jsonify({'error': 'Title is required'}), 400
 
+    timer_type = data.get('timer_type', 'stopwatch')
+    estimated_time = data.get('estimated_time')
+    
+    # For countdown tasks, initialize timer to estimated duration in seconds
+    if timer_type == 'countdown' and estimated_time:
+        initial_seconds = int(estimated_time) * 60
+    else:
+        initial_seconds = 0
+
     task = {
         'title': title,
         'category_id': data.get('category_id'),
@@ -128,12 +138,13 @@ def create_task():
         'created_at': datetime.now().isoformat(),
         'completed_at': None,
         'due_date': data.get('due_date'),
-        'estimated_time': data.get('estimated_time'),
+        'estimated_time': estimated_time,
         'actual_time': None,
-        'timer_type': data.get('timer_type', 'stopwatch'),
-        'timer_seconds': 0,
+        'timer_type': timer_type,
+        'timer_seconds': initial_seconds,
         'timer_running': 0,
         'timer_started_at': None,
+        'countdown_completed': False,
         'notes': data.get('notes', ''),
     }
 
@@ -149,7 +160,7 @@ def update_task(task_id):
 
     allowed = ['title', 'category_id', 'status', 'due_date', 'estimated_time',
                'actual_time', 'timer_type', 'timer_seconds', 'timer_running',
-               'timer_started_at', 'notes']
+               'timer_started_at', 'notes', 'countdown_completed']
 
     for field in allowed:
         if field in data:
@@ -303,6 +314,92 @@ def insights():
             'completed_tasks': done_count,
         }
     })
+
+
+# ── Stars API ────────────────────────────────────────────────────────
+
+@app.route('/api/stars/earn', methods=['POST'])
+def earn_stars():
+    """Award stars for completing a countdown task before deadline."""
+    data = request.json
+    task_id = data.get('task_id')
+
+    if not task_id:
+        return jsonify({'error': 'task_id is required'}), 400
+
+    task = tasks_col.find_one({'_id': ObjectId(task_id)})
+    if not task:
+        return jsonify({'error': 'Task not found'}), 404
+
+    # Validate: must be countdown timer
+    if task.get('timer_type') != 'countdown':
+        return jsonify({'error': 'Only countdown tasks earn stars'}), 400
+
+    # Validate: countdown must have been completed (reached 0)
+    if not task.get('countdown_completed'):
+        return jsonify({'error': 'Countdown was not fully completed'}), 400
+
+    # Validate: must be completed before deadline (if deadline exists)
+    if task.get('due_date'):
+        completed_at = task.get('completed_at', datetime.now().isoformat())
+        if completed_at > task['due_date']:
+            return jsonify({'error': 'Task completed after deadline, no stars'}), 400
+
+    # Validate: not already awarded stars for this task
+    existing = stars_col.find_one({'task_id': task_id})
+    if existing:
+        return jsonify({'error': 'Stars already earned for this task'}), 409
+
+    # Calculate stars: countdown_minutes / 60
+    # estimated_time stores the original countdown minutes
+    countdown_mins = task.get('estimated_time', 0) or 0
+    if countdown_mins <= 0:
+        return jsonify({'error': 'Invalid countdown duration'}), 400
+
+    stars = round(countdown_mins / 60, 1)
+
+    now = datetime.now()
+    star_doc = {
+        'task_id': task_id,
+        'task_title': task.get('title', ''),
+        'stars': stars,
+        'countdown_minutes': countdown_mins,
+        'earned_at': now.isoformat(),
+        'date': now.strftime('%Y-%m-%d'),
+    }
+
+    stars_col.insert_one(star_doc)
+
+    return jsonify({
+        'stars_earned': stars,
+        'task_title': task.get('title', ''),
+        'total_today': get_today_star_total()
+    }), 201
+
+
+@app.route('/api/stars/today', methods=['GET'])
+def today_stars():
+    """Get total stars earned today."""
+    today = datetime.now().strftime('%Y-%m-%d')
+    entries = list(stars_col.find({'date': today}).sort('earned_at', -1))
+    total = sum(e.get('stars', 0) for e in entries)
+
+    return jsonify({
+        'total_stars': total,
+        'entries': [{
+            'task_title': e.get('task_title', ''),
+            'stars': e.get('stars', 0),
+            'countdown_minutes': e.get('countdown_minutes', 0),
+            'earned_at': e.get('earned_at', ''),
+        } for e in entries]
+    })
+
+
+def get_today_star_total():
+    """Helper to get today's total stars."""
+    today = datetime.now().strftime('%Y-%m-%d')
+    entries = stars_col.find({'date': today})
+    return sum(e.get('stars', 0) for e in entries)
 
 
 # ── Keep alive (ping self every 14 min) ──────────────────────────────

@@ -49,3 +49,7 @@ export function getReminders() { return request('GET', '/api/reminders'); }
 // Insights
 export function getInsights() { return request('GET', '/api/insights'); }
 
+// Stars
+export function earnStars(taskId) { return request('POST', '/api/stars/earn', { task_id: taskId }); }
+export function getTodayStars() { return request('GET', '/api/stars/today'); }
+

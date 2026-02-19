@@ -1,9 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
 import * as API from '../services/api'
 
-export default function TaskCard({ task, isCompleted = false, onComplete, onReopen, onDelete, onTimerUpdate }) {
-    const [timerSeconds, setTimerSeconds] = useState(task.timer_seconds || 0)
+export default function TaskCard({ task, isCompleted = false, onComplete, onReopen, onDelete, onTimerUpdate, onCountdownComplete }) {
+    // For countdown tasks: if timer_seconds is 0 and we have estimated_time, use that
+    const initialSeconds = (task.timer_type === 'countdown' && !task.timer_seconds && task.estimated_time)
+        ? task.estimated_time * 60
+        : (task.timer_seconds || 0)
+    const [timerSeconds, setTimerSeconds] = useState(initialSeconds)
     const [isRunning, setIsRunning] = useState(task.timer_running || false)
+    const [countdownDone, setCountdownDone] = useState(task.countdown_completed || false)
     const intervalRef = useRef(null)
 
     useEffect(() => {
@@ -16,7 +21,7 @@ export default function TaskCard({ task, isCompleted = false, onComplete, onReop
 
                     // Stop countdown at 0
                     if (task.timer_type === 'countdown' && next <= 0) {
-                        handleToggleTimer()
+                        handleCountdownFinished()
                         return 0
                     }
                     return next
@@ -33,6 +38,28 @@ export default function TaskCard({ task, isCompleted = false, onComplete, onReop
             if (intervalRef.current) clearInterval(intervalRef.current)
         }
     }, [isRunning, isCompleted])
+
+    async function handleCountdownFinished() {
+        // Stop the timer
+        setIsRunning(false)
+        setCountdownDone(true)
+        if (intervalRef.current) {
+            clearInterval(intervalRef.current)
+            intervalRef.current = null
+        }
+        // Mark countdown as completed in the backend
+        try {
+            await API.updateTask(task.id, {
+                timer_running: 0,
+                timer_seconds: 0,
+                countdown_completed: true
+            })
+            if (onCountdownComplete) onCountdownComplete(task)
+            if (onTimerUpdate) onTimerUpdate()
+        } catch (e) {
+            console.error(e)
+        }
+    }
 
     async function handleToggleTimer() {
         try {
@@ -52,12 +79,17 @@ export default function TaskCard({ task, isCompleted = false, onComplete, onReop
 
     async function handleResetTimer() {
         try {
+            const resetSeconds = task.timer_type === 'countdown' && task.estimated_time
+                ? task.estimated_time * 60
+                : 0
             await API.updateTask(task.id, {
-                timer_seconds: 0,
+                timer_seconds: resetSeconds,
                 timer_running: 0,
-                timer_started_at: null
+                timer_started_at: null,
+                countdown_completed: false
             })
-            setTimerSeconds(0)
+            setTimerSeconds(resetSeconds)
+            setCountdownDone(false)
             setIsRunning(false)
             if (onTimerUpdate) onTimerUpdate()
         } catch (e) {
@@ -112,12 +144,17 @@ export default function TaskCard({ task, isCompleted = false, onComplete, onReop
         }
     }
 
-    const isCountdownDone = task.timer_type === 'countdown' && timerSeconds <= 0 && !isCompleted
+    const isCountdownDone = (task.timer_type === 'countdown' && (timerSeconds <= 0 || countdownDone)) && !isCompleted
     const timerCls = isCountdownDone
         ? 'timer-display countdown-done'
         : isRunning
             ? 'timer-display timer-active'
             : 'timer-display'
+
+    // Calculate stars this task would earn
+    const potentialStars = task.timer_type === 'countdown' && task.estimated_time
+        ? Math.round((task.estimated_time / 60) * 10) / 10
+        : 0
 
     return (
         <div className={`task-card ${isCompleted ? 'completed' : ''} ${dueClass}`}>
@@ -154,9 +191,14 @@ export default function TaskCard({ task, isCompleted = false, onComplete, onReop
             </div>
             {!isCompleted && (
                 <div className="task-timer">
-                    <div className={`timer-ring ${isRunning ? 'spinning' : ''}`}>
+                    <div className={`timer-ring ${isRunning ? 'spinning' : ''} ${isCountdownDone ? 'countdown-complete-ring' : ''}`}>
                         <span className={timerCls}>{formatTime(timerSeconds)}</span>
                     </div>
+                    {isCountdownDone && potentialStars > 0 && (
+                        <span className="star-ready-badge" title={`Complete to earn ${potentialStars} star${potentialStars !== 1 ? 's' : ''}!`}>
+                            ⭐ {potentialStars}
+                        </span>
+                    )}
                     <button
                         className={`timer-btn ${isRunning ? 'pause' : 'play'}`}
                         onClick={handleToggleTimer}
