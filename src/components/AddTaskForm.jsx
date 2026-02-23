@@ -23,6 +23,15 @@ export default function AddTaskForm({ categories, onAdd }) {
                 const p = await API.predict(title)
                 if (p.category && p.category.category) {
                     setPredictions(p)
+                    // Auto-apply predicted category
+                    if (p.category_id) {
+                        setCategoryId(p.category_id)
+                    }
+                    // Auto-apply predicted time as countdown
+                    if (p.time && p.time.estimated_minutes) {
+                        setTimerType('countdown')
+                        setCountdownMins(String(p.time.estimated_minutes))
+                    }
                 } else {
                     setPredictions(null)
                 }

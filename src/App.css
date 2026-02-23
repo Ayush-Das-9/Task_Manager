@@ -877,11 +877,27 @@ input:focus {
 }
 
 @keyframes starBounce {
-    0%, 100% { transform: scale(1); }
-    20% { transform: scale(1.25); }
-    40% { transform: scale(0.9); }
-    60% { transform: scale(1.15); }
-    80% { transform: scale(0.95); }
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    20% {
+        transform: scale(1.25);
+    }
+
+    40% {
+        transform: scale(0.9);
+    }
+
+    60% {
+        transform: scale(1.15);
+    }
+
+    80% {
+        transform: scale(0.95);
+    }
 }
 
 /* ── ⭐ Star-Ready Badge (on TaskCard) ───────────────────────────── */
@@ -903,12 +919,15 @@ input:focus {
 }
 
 @keyframes starReadyPulse {
-    0%, 100% { 
-        transform: scale(1); 
+
+    0%,
+    100% {
+        transform: scale(1);
         box-shadow: 0 0 4px rgba(245, 158, 11, 0.2);
     }
-    50% { 
-        transform: scale(1.06); 
+
+    50% {
+        transform: scale(1.06);
         box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
     }
 }
@@ -958,13 +977,26 @@ input:focus {
 }
 
 @keyframes overlayFadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; background: rgba(0, 0, 0, 0.15); }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+        background: rgba(0, 0, 0, 0.15);
+    }
 }
 
 @keyframes overlayFadeOut {
-    from { opacity: 1; background: rgba(0, 0, 0, 0.15); }
-    to { opacity: 0; background: rgba(0, 0, 0, 0); }
+    from {
+        opacity: 1;
+        background: rgba(0, 0, 0, 0.15);
+    }
+
+    to {
+        opacity: 0;
+        background: rgba(0, 0, 0, 0);
+    }
 }
 
 /* Star particles */
@@ -980,10 +1012,12 @@ input:focus {
         opacity: 0;
         transform: scale(0) translateY(0);
     }
+
     20% {
         opacity: 1;
         transform: scale(1.2);
     }
+
     100% {
         opacity: 0;
         transform: scale(0.5) translateY(-120px) rotate(180deg);
@@ -998,9 +1032,20 @@ input:focus {
 }
 
 @keyframes centerPop {
-    0% { transform: scale(0) rotate(-10deg); opacity: 0; }
-    50% { transform: scale(1.2) rotate(5deg); opacity: 1; }
-    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    0% {
+        transform: scale(0) rotate(-10deg);
+        opacity: 0;
+    }
+
+    50% {
+        transform: scale(1.2) rotate(5deg);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+    }
 }
 
 .star-burst-big-star {
@@ -1010,9 +1055,17 @@ input:focus {
 }
 
 @keyframes bigStarSpin {
-    0% { transform: rotate(-30deg) scale(0.5); }
-    50% { transform: rotate(15deg) scale(1.3); }
-    100% { transform: rotate(0deg) scale(1); }
+    0% {
+        transform: rotate(-30deg) scale(0.5);
+    }
+
+    50% {
+        transform: rotate(15deg) scale(1.3);
+    }
+
+    100% {
+        transform: rotate(0deg) scale(1);
+    }
 }
 
 .star-burst-count {
@@ -1028,8 +1081,15 @@ input:focus {
 }
 
 @keyframes countSlideUp {
-    0% { transform: translateY(20px); opacity: 0; }
-    100% { transform: translateY(0); opacity: 1; }
+    0% {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
 
 .star-burst-label {
@@ -1057,4 +1117,432 @@ input:focus {
     color: #d97706;
     margin-top: 6px;
     animation: countSlideUp 0.6s ease 0.55s both;
+}
+
+/* ── Header Layout ───────────────────────────────────────────────── */
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.progress-btn {
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: var(--bg-card);
+    cursor: pointer;
+    font-family: var(--font);
+    font-size: 0.82em;
+    font-weight: 600;
+    color: var(--accent);
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.progress-btn:hover {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+/* ── Important Task Styling ──────────────────────────────────────── */
+
+.task-card.important {
+    border-left: 3px solid #f59e0b;
+    background: linear-gradient(90deg, #fffbeb 0%, var(--bg-card) 5%);
+}
+
+.task-important-btn {
+    width: 26px;
+    height: 26px;
+    border: none;
+    border-radius: 50%;
+    background: none;
+    cursor: pointer;
+    font-size: 0.9em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s;
+    color: var(--text-secondary);
+    opacity: 0.5;
+}
+
+.task-card:hover .task-important-btn {
+    opacity: 1;
+}
+
+.task-important-btn.active {
+    opacity: 1;
+    animation: fireGlow 1s ease infinite;
+}
+
+@keyframes fireGlow {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.15);
+    }
+}
+
+.important-label {
+    display: inline-block;
+    font-size: 0.6em;
+    font-weight: 800;
+    color: #b45309;
+    background: #fef3c7;
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-right: 6px;
+    vertical-align: middle;
+    letter-spacing: 0.5px;
+}
+
+/* ── Star History Panel ──────────────────────────────────────────── */
+
+.star-history-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 500;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 60px;
+    animation: overlayFadeIn 0.2s ease;
+}
+
+.star-history-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+    width: 90%;
+    max-width: 480px;
+    padding: 20px;
+    animation: centerPop 0.3s ease;
+}
+
+.sh-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.sh-header h3 {
+    font-size: 1.1em;
+    font-weight: 700;
+}
+
+.sh-close {
+    background: none;
+    border: none;
+    font-size: 1.2em;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 4px;
+}
+
+.sh-best-day {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border-radius: 8px;
+    font-size: 0.88em;
+    font-weight: 500;
+    color: #92400e;
+    margin-bottom: 16px;
+}
+
+.sh-crown {
+    font-size: 1.2em;
+}
+
+.sh-chart {
+    display: flex;
+    gap: 4px;
+    height: 140px;
+    align-items: flex-end;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+}
+
+.sh-bar-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    height: 100%;
+    justify-content: flex-end;
+    transition: all 0.15s;
+    border-radius: 4px;
+    padding: 2px;
+}
+
+.sh-bar-col:hover {
+    background: var(--bg-hover);
+}
+
+.sh-bar-col.selected {
+    background: var(--accent-light);
+}
+
+.sh-bar-col.best .sh-bar {
+    background: linear-gradient(180deg, #f59e0b, #fbbf24) !important;
+}
+
+.sh-bar-value {
+    font-size: 0.7em;
+    font-weight: 700;
+    color: var(--accent);
+    min-height: 14px;
+}
+
+.sh-bar {
+    width: 100%;
+    max-width: 30px;
+    background: linear-gradient(180deg, #4f46e5, #818cf8);
+    border-radius: 4px 4px 0 0;
+    min-height: 4px;
+    transition: height 0.3s ease;
+}
+
+.sh-bar-label {
+    font-size: 0.7em;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.sh-tasks {
+    animation: countSlideUp 0.3s ease;
+}
+
+.sh-tasks h4 {
+    font-size: 0.9em;
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sh-task-count {
+    font-size: 0.8em;
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
+.sh-tasks ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.sh-tasks li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    font-size: 0.85em;
+    background: var(--bg);
+}
+
+.sh-task-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.sh-task-title {
+    flex: 1;
+}
+
+.sh-task-time {
+    font-size: 0.8em;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.sh-empty {
+    font-size: 0.85em;
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 12px;
+}
+
+/* ── Progress Panel ──────────────────────────────────────────────── */
+
+.progress-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 500;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 60px;
+    animation: overlayFadeIn 0.2s ease;
+}
+
+.progress-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+    width: 94%;
+    max-width: 600px;
+    padding: 22px;
+    animation: centerPop 0.3s ease;
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+.prog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.prog-header h3 {
+    font-size: 1.15em;
+    font-weight: 700;
+}
+
+.prog-close {
+    background: none;
+    border: none;
+    font-size: 1.2em;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 4px;
+}
+
+.prog-search {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.prog-search input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--font);
+    font-size: 0.95em;
+    outline: none;
+}
+
+.prog-search input:focus {
+    border-color: var(--accent);
+}
+
+.prog-loading,
+.prog-empty {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.9em;
+    padding: 20px;
+}
+
+.prog-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.prog-stat {
+    text-align: center;
+    padding: 12px 8px;
+    background: var(--bg);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+
+.prog-stat-value {
+    font-size: 1.4em;
+    font-weight: 800;
+    color: var(--accent);
+    display: block;
+}
+
+.prog-stat-label {
+    font-size: 0.7em;
+    color: var(--text-secondary);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.prog-chart {
+    margin-top: 8px;
+}
+
+.prog-chart-title {
+    font-size: 0.85em;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+
+.prog-bars {
+    display: flex;
+    gap: 3px;
+    height: 160px;
+    align-items: flex-end;
+    padding-bottom: 4px;
+}
+
+.prog-bar-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    height: 100%;
+    justify-content: flex-end;
+}
+
+.prog-bar-value {
+    font-size: 0.6em;
+    font-weight: 600;
+    color: var(--accent);
+    min-height: 12px;
+}
+
+.prog-bar {
+    width: 100%;
+    max-width: 28px;
+    border-radius: 4px 4px 0 0;
+    min-height: 3px;
+    transition: height 0.4s ease;
+}
+
+.prog-bar-label {
+    font-size: 0.6em;
+    font-weight: 600;
+    color: var(--text-secondary);
 }

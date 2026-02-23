@@ -52,4 +52,9 @@ export function getInsights() { return request('GET', '/api/insights'); }
 // Stars
 export function earnStars(taskId) { return request('POST', '/api/stars/earn', { task_id: taskId }); }
 export function getTodayStars() { return request('GET', '/api/stars/today'); }
+export function getWeekStars() { return request('GET', '/api/stars/week'); }
 
+// Progress
+export function getProgress(keyword) {
+    return request('GET', `/api/progress?keyword=${encodeURIComponent(keyword)}`);
+}

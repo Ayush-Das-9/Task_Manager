@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import * as API from '../services/api'
 
-export default function TaskCard({ task, isCompleted = false, onComplete, onReopen, onDelete, onTimerUpdate, onCountdownComplete }) {
+export default function TaskCard({ task, isCompleted = false, onComplete, onReopen, onDelete, onTimerUpdate, onCountdownComplete, onToggleImportant }) {
     // For countdown tasks: if timer_seconds is 0 and we have estimated_time, use that
     const initialSeconds = (task.timer_type === 'countdown' && !task.timer_seconds && task.estimated_time)
         ? task.estimated_time * 60
@@ -157,7 +157,16 @@ export default function TaskCard({ task, isCompleted = false, onComplete, onReop
         : 0
 
     return (
-        <div className={`task-card ${isCompleted ? 'completed' : ''} ${dueClass}`}>
+        <div className={`task-card ${isCompleted ? 'completed' : ''} ${dueClass} ${task.is_important && !isCompleted ? 'important' : ''}`}>
+            {!isCompleted && (
+                <button
+                    className={`task-important-btn ${task.is_important ? 'active' : ''}`}
+                    onClick={onToggleImportant}
+                    title={task.is_important ? 'Remove priority' : 'Mark as important'}
+                >
+                    {task.is_important ? '🔥' : '○'}
+                </button>
+            )}
             <div
                 className="task-check"
                 onClick={isCompleted ? onReopen : onComplete}
@@ -165,7 +174,10 @@ export default function TaskCard({ task, isCompleted = false, onComplete, onReop
                 {isCompleted && '✓'}
             </div>
             <div className="task-info">
-                <div className="task-title">{task.title}</div>
+                <div className="task-title">
+                    {task.is_important && !isCompleted && <span className="important-label">PRIORITY</span>}
+                    {task.title}
+                </div>
                 <div className="task-meta">
                     {task.category_name && (
                         <span

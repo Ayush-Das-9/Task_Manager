@@ -145,6 +145,7 @@ def create_task():
         'timer_running': 0,
         'timer_started_at': None,
         'countdown_completed': False,
+        'is_important': data.get('is_important', False),
         'notes': data.get('notes', ''),
     }
 
@@ -160,7 +161,7 @@ def update_task(task_id):
 
     allowed = ['title', 'category_id', 'status', 'due_date', 'estimated_time',
                'actual_time', 'timer_type', 'timer_seconds', 'timer_running',
-               'timer_started_at', 'notes', 'countdown_completed']
+               'timer_started_at', 'notes', 'countdown_completed', 'is_important']
 
     for field in allowed:
         if field in data:
@@ -229,22 +230,42 @@ def predict():
     if not title:
         return jsonify({'category': None, 'time': None})
 
-    completed = []
-    for t in tasks_col.find({'status': 'completed'}):
+    # Get available category names for direct matching
+    all_cats = list(categories_col.find())
+    available_cat_names = [c['name'] for c in all_cats]
+
+    # Include ALL tasks (active + completed) for better learning
+    training_data = []
+    for t in tasks_col.find():
         name, _ = get_category_info(t.get('category_id'))
         if name:
-            completed.append({
+            training_data.append({
                 'title': t['title'],
                 'category': name,
                 'actual_time': t.get('actual_time'),
+                'estimated_time': t.get('estimated_time'),
                 'completed_at': t.get('completed_at'),
             })
 
-    cat_prediction = predict_category(title, completed)
+    cat_prediction = predict_category(title, training_data, available_categories=available_cat_names)
 
     time_prediction = None
     if cat_prediction['category']:
-        time_prediction = predict_time(cat_prediction['category'], completed)
+        time_prediction = predict_time(cat_prediction['category'], training_data)
+        # If no actual_time data exists, fall back to estimated_time from similar tasks
+        if time_prediction['estimated_minutes'] is None:
+            relevant = [
+                t for t in training_data
+                if t.get('category', '').lower() == cat_prediction['category'].lower()
+                and t.get('estimated_time') is not None
+                and t['estimated_time'] > 0
+            ]
+            if relevant:
+                est_times = [t['estimated_time'] for t in relevant]
+                time_prediction = {
+                    'estimated_minutes': round(sum(est_times) / len(est_times)),
+                    'data_points': len(relevant)
+                }
 
     cat_id = None
     if cat_prediction['category']:
@@ -400,6 +421,125 @@ def get_today_star_total():
     today = datetime.now().strftime('%Y-%m-%d')
     entries = stars_col.find({'date': today})
     return sum(e.get('stars', 0) for e in entries)
+
+
+@app.route('/api/stars/week', methods=['GET'])
+def week_stars():
+    """Get star totals per day for the last 7 days + completed tasks per day."""
+    today = datetime.now()
+    days = []
+    best_day = None
+    best_stars = -1
+
+    for i in range(6, -1, -1):
+        d = today - timedelta(days=i)
+        date_str = d.strftime('%Y-%m-%d')
+        day_label = d.strftime('%a')  # Mon, Tue, ...
+
+        # Stars for this day
+        star_entries = list(stars_col.find({'date': date_str}))
+        day_total = sum(e.get('stars', 0) for e in star_entries)
+
+        # Completed tasks for this day
+        day_start = d.replace(hour=0, minute=0, second=0).isoformat()
+        day_end = d.replace(hour=23, minute=59, second=59).isoformat()
+        completed_tasks = list(tasks_col.find({
+            'status': 'completed',
+            'completed_at': {'$gte': day_start, '$lte': day_end}
+        }))
+
+        tasks_list = []
+        for t in completed_tasks:
+            name, color = get_category_info(t.get('category_id'))
+            tasks_list.append({
+                'title': t.get('title', ''),
+                'category': name or '',
+                'category_color': color or '#888',
+                'actual_time': t.get('actual_time'),
+                'estimated_time': t.get('estimated_time'),
+            })
+
+        day_data = {
+            'date': date_str,
+            'day': day_label,
+            'stars': round(day_total, 1),
+            'tasks': tasks_list,
+            'task_count': len(tasks_list),
+        }
+        days.append(day_data)
+
+        if day_total > best_stars:
+            best_stars = day_total
+            best_day = day_data
+
+    return jsonify({
+        'days': days,
+        'best_day': best_day,
+    })
+
+
+# ── Progress API ─────────────────────────────────────────────────────
+
+@app.route('/api/progress', methods=['GET'])
+def get_progress():
+    """Get daily time totals for completed tasks matching a keyword."""
+    keyword = request.args.get('keyword', '').strip().lower()
+    if not keyword:
+        return jsonify({'error': 'keyword is required'}), 400
+
+    # Find all completed tasks containing the keyword
+    all_tasks = list(tasks_col.find({'status': 'completed'}))
+    matching = [t for t in all_tasks if keyword in t.get('title', '').lower()]
+
+    # Group time by date (last 14 days)
+    today = datetime.now()
+    daily = {}
+    for i in range(13, -1, -1):
+        d = today - timedelta(days=i)
+        daily[d.strftime('%Y-%m-%d')] = {'date': d.strftime('%Y-%m-%d'), 'day': d.strftime('%a'), 'minutes': 0, 'tasks': []}
+
+    total_minutes = 0
+    for t in matching:
+        completed_at = t.get('completed_at', '')
+        if not completed_at:
+            continue
+        try:
+            dt = datetime.fromisoformat(completed_at)
+        except (ValueError, TypeError):
+            continue
+        date_key = dt.strftime('%Y-%m-%d')
+        mins = t.get('actual_time') or t.get('estimated_time') or 0
+        total_minutes += mins
+        if date_key in daily:
+            daily[date_key]['minutes'] += mins
+            name, _ = get_category_info(t.get('category_id'))
+            daily[date_key]['tasks'].append({
+                'title': t.get('title', ''),
+                'minutes': mins,
+                'category': name or '',
+            })
+
+    days_list = list(daily.values())
+    active_days = sum(1 for d in days_list if d['minutes'] > 0)
+
+    # Streak: consecutive days with time spent (from today backwards)
+    streak = 0
+    for d in reversed(days_list):
+        if d['minutes'] > 0:
+            streak += 1
+        else:
+            break
+
+    return jsonify({
+        'keyword': keyword,
+        'days': days_list,
+        'total_minutes': total_minutes,
+        'total_tasks': len(matching),
+        'active_days': active_days,
+        'avg_per_day': round(total_minutes / max(active_days, 1)),
+        'streak': streak,
+    })
+
 
 
 # ── Keep alive (ping self every 14 min) ──────────────────────────────

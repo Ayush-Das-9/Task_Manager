@@ -50,11 +50,34 @@ def build_category_model(completed_tasks):
 
 def predict_category(title, completed_tasks, available_categories=None):
     """
-    Predict the best category for a task title based on keyword scoring.
+    Predict the best category for a task title.
+    Strategy:
+      1. Direct match — if a word in the title matches a category name, use it
+      2. Keyword TF-IDF scoring from task history
     Returns: {'category': str, 'confidence': float, 'alternatives': list}
     """
-    model = build_category_model(completed_tasks)
+    title_lower = title.lower().strip()
     tokens = tokenize(title)
+
+    # ── Strategy 1: Direct category-name match ──
+    if available_categories:
+        # Check if any category name appears as a word in the title
+        cat_lower_map = {c.lower(): c for c in available_categories}
+        # Check whole-word matches (longest first to prefer "Code Review" over "Code")
+        sorted_cats = sorted(cat_lower_map.keys(), key=len, reverse=True)
+        for cat_low in sorted_cats:
+            # Match as a whole word (not substring of another word)
+            pattern = r'\b' + re.escape(cat_low) + r'\b'
+            if re.search(pattern, title_lower):
+                original_name = cat_lower_map[cat_low]
+                return {
+                    'category': original_name,
+                    'confidence': 0.95,
+                    'alternatives': []
+                }
+
+    # ── Strategy 2: Keyword TF-IDF scoring ──
+    model = build_category_model(completed_tasks)
 
     if not tokens or not model:
         return {'category': None, 'confidence': 0, 'alternatives': []}

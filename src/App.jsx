@@ -9,6 +9,8 @@ import CategoryModal from './components/CategoryModal'
 import CompleteTaskModal from './components/CompleteTaskModal'
 import StarCounter from './components/StarCounter'
 import StarBurst from './components/StarBurst'
+import StarHistory from './components/StarHistory'
+import ProgressPanel from './components/ProgressPanel'
 
 function App() {
     const [tasks, setTasks] = useState([])
@@ -25,6 +27,8 @@ function App() {
     const [todayStars, setTodayStars] = useState(0)
     const [starAnimating, setStarAnimating] = useState(false)
     const [starBurst, setStarBurst] = useState(null) // { starsEarned, taskTitle }
+    const [showStarHistory, setShowStarHistory] = useState(false)
+    const [showProgress, setShowProgress] = useState(false)
 
     // Load data
     useEffect(() => {
@@ -95,9 +99,9 @@ function App() {
             setTasks(prev => prev.map(t => t.id === id ? updated : t))
             setShowCompleteModal(false)
 
-            // ⭐ Try to earn stars (server will validate)
-            const task = completingTask
-            if (task && task.timer_type === 'countdown' && task.countdown_completed) {
+            // ⭐ Try to earn stars — use fresh task data from state, not stale completingTask
+            const freshTask = tasks.find(t => t.id === id) || completingTask
+            if (freshTask && freshTask.timer_type === 'countdown') {
                 try {
                     const result = await API.earnStars(id)
                     // Trigger star burst animation!
@@ -157,6 +161,17 @@ function App() {
         setShowCompleteModal(true)
     }
 
+    async function handleToggleImportant(id) {
+        try {
+            const task = tasks.find(t => t.id === id)
+            if (!task) return
+            const updated = await API.updateTask(id, { is_important: !task.is_important })
+            setTasks(prev => prev.map(t => t.id === id ? updated : t))
+        } catch (e) {
+            console.error(e)
+        }
+    }
+
     // Filter tasks
     const activeTasks = tasks.filter(t => t.status === 'active')
     const completedTasks = tasks.filter(t => t.status === 'completed')
@@ -164,6 +179,13 @@ function App() {
     const filteredActive = activeFilter === 'all'
         ? activeTasks
         : activeTasks.filter(t => t.category_id == activeFilter)
+
+    // Sort: important tasks first, then by created_at
+    const sortedActive = [...filteredActive].sort((a, b) => {
+        if (a.is_important && !b.is_important) return -1
+        if (!a.is_important && b.is_important) return 1
+        return 0
+    })
 
     const filteredCompleted = activeFilter === 'all'
         ? completedTasks
@@ -183,12 +205,22 @@ function App() {
 
             <div className="app-container">
                 <header className="app-header">
+                    <div className="header-left">
+                        <button
+                            className="progress-btn"
+                            onClick={() => setShowProgress(true)}
+                        >
+                            📈 Progress
+                        </button>
+                    </div>
                     <h1>📋 Task Manager</h1>
                     <div className="header-stats">
-                        <StarCounter
-                            totalStars={todayStars}
-                            isAnimating={starAnimating}
-                        />
+                        <div onClick={() => setShowStarHistory(true)} style={{ cursor: 'pointer' }}>
+                            <StarCounter
+                                totalStars={todayStars}
+                                isAnimating={starAnimating}
+                            />
+                        </div>
                         <span className="stat-badge">{stats.active} active</span>
                         <span className="stat-badge">{stats.completed} done</span>
                     </div>
@@ -213,8 +245,8 @@ function App() {
 
                 <section className="tasks-section">
                     <div className="task-list">
-                        {filteredActive.length > 0 ? (
-                            filteredActive.map(task => (
+                        {sortedActive.length > 0 ? (
+                            sortedActive.map(task => (
                                 <TaskCard
                                     key={task.id}
                                     task={task}
@@ -222,6 +254,7 @@ function App() {
                                     onDelete={() => handleDeleteTask(task.id)}
                                     onTimerUpdate={handleTimerUpdate}
                                     onCountdownComplete={handleCountdownComplete}
+                                    onToggleImportant={() => handleToggleImportant(task.id)}
                                 />
                             ))
                         ) : (
@@ -279,6 +312,16 @@ function App() {
                     taskTitle={starBurst.taskTitle}
                     onDone={() => setStarBurst(null)}
                 />
+            )}
+
+            {/* Star History Panel */}
+            {showStarHistory && (
+                <StarHistory onClose={() => setShowStarHistory(false)} />
+            )}
+
+            {/* Progress Panel */}
+            {showProgress && (
+                <ProgressPanel onClose={() => setShowProgress(false)} />
             )}
         </>
     )
