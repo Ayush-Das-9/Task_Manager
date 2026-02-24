@@ -58,3 +58,30 @@ export function getWeekStars() { return request('GET', '/api/stars/week'); }
 export function getProgress(keyword) {
     return request('GET', `/api/progress?keyword=${encodeURIComponent(keyword)}`);
 }
+
+// Task Notes
+export function getTaskNotes(taskNameKey) {
+    return request('GET', `/api/task-notes/${encodeURIComponent(taskNameKey)}`);
+}
+export function addTaskNote(taskNameKey, text) {
+    return request('POST', `/api/task-notes/${encodeURIComponent(taskNameKey)}`, { text });
+}
+
+// Task Name Autocomplete
+export function searchTaskNames(query) {
+    return request('GET', `/api/task-names/search?q=${encodeURIComponent(query)}`);
+}
+
+// Lifetime Tracking
+export function setLifetimeTracked(taskNameKey, displayName) {
+    return request('POST', '/api/lifetime-track', { task_name_key: taskNameKey, display_name: displayName });
+}
+export function removeLifetimeTracked(taskNameKey) {
+    return request('DELETE', `/api/lifetime-track/${encodeURIComponent(taskNameKey)}`);
+}
+export function getLifetimeTracking() {
+    return request('GET', '/api/lifetime-tracking');
+}
+export function accumulateTime(taskNameKey, seconds) {
+    return request('POST', '/api/lifetime-track/accumulate', { task_name_key: taskNameKey, seconds });
+}

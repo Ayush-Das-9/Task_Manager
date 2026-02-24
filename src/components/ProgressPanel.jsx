@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import * as API from '../services/api'
 
 export default function ProgressPanel({ onClose }) {
@@ -6,6 +6,25 @@ export default function ProgressPanel({ onClose }) {
     const [data, setData] = useState(null)
     const [loading, setLoading] = useState(false)
     const [searched, setSearched] = useState(false)
+
+    // Lifetime tracking state
+    const [trackedTasks, setTrackedTasks] = useState([])
+    const [trackingLoading, setTrackingLoading] = useState(true)
+
+    useEffect(() => {
+        loadTrackedTasks()
+    }, [])
+
+    async function loadTrackedTasks() {
+        setTrackingLoading(true)
+        try {
+            const result = await API.getLifetimeTracking()
+            setTrackedTasks(result)
+        } catch (err) {
+            console.error(err)
+        }
+        setTrackingLoading(false)
+    }
 
     async function handleSearch(e) {
         e.preventDefault()
@@ -21,7 +40,17 @@ export default function ProgressPanel({ onClose }) {
         setLoading(false)
     }
 
+    function formatTotalTime(seconds) {
+        const hrs = Math.floor(seconds / 3600)
+        const mins = Math.floor((seconds % 3600) / 60)
+        if (hrs > 0) return `${hrs}h ${mins}m`
+        return `${mins}m`
+    }
+
     const maxMins = data ? Math.max(...data.days.map(d => d.minutes), 1) : 1
+    const maxTrackedSeconds = trackedTasks.length > 0
+        ? Math.max(...trackedTasks.map(t => t.total_seconds), 1)
+        : 1
 
     return (
         <div className="progress-overlay" onClick={onClose}>
@@ -95,6 +124,45 @@ export default function ProgressPanel({ onClose }) {
                 {searched && !loading && data && data.total_tasks === 0 && (
                     <p className="prog-empty">No completed tasks found matching "{keyword}"</p>
                 )}
+
+                {/* ── Total Time Tracking Section ── */}
+                <div className="lifetime-tracking-section">
+                    <div className="lifetime-header">
+                        <h4>🕐 Total Time Tracking</h4>
+                        <span className="lifetime-subtitle">Lifetime-tracked tasks</span>
+                    </div>
+
+                    {trackingLoading ? (
+                        <p className="prog-loading">Loading tracked tasks...</p>
+                    ) : trackedTasks.length === 0 ? (
+                        <p className="lifetime-empty">
+                            No tasks are being tracked yet. Click the ⏱ button on any task to start lifetime tracking.
+                        </p>
+                    ) : (
+                        <div className="lifetime-list">
+                            {trackedTasks.map((task, i) => (
+                                <div key={task.id} className="lifetime-item">
+                                    <div className="lifetime-item-header">
+                                        <span className="lifetime-rank">#{i + 1}</span>
+                                        <span className="lifetime-name">{task.display_name}</span>
+                                        <span className="lifetime-time">
+                                            {formatTotalTime(task.total_seconds)}
+                                        </span>
+                                    </div>
+                                    <div className="lifetime-bar-wrapper">
+                                        <div
+                                            className="lifetime-bar"
+                                            style={{
+                                                width: `${Math.max((task.total_seconds / maxTrackedSeconds) * 100, 2)}%`
+                                            }}
+                                        />
+                                    </div>
+                                    <span className="lifetime-sessions">{task.sessions} session{task.sessions !== 1 ? 's' : ''}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     )

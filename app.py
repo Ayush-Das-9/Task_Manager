@@ -22,6 +22,8 @@ db = client['task_manager']
 tasks_col = db['tasks']
 categories_col = db['categories']
 stars_col = db['stars']
+task_notes_col = db['task_notes']
+lifetime_tracking_col = db['lifetime_tracking']
 
 # ── Init defaults ─────────────────────────────────────────────────────
 
@@ -161,7 +163,8 @@ def update_task(task_id):
 
     allowed = ['title', 'category_id', 'status', 'due_date', 'estimated_time',
                'actual_time', 'timer_type', 'timer_seconds', 'timer_running',
-               'timer_started_at', 'notes', 'countdown_completed', 'is_important']
+               'timer_started_at', 'notes', 'countdown_completed', 'is_important',
+               'lifetime_tracked']
 
     for field in allowed:
         if field in data:
@@ -540,6 +543,142 @@ def get_progress():
         'streak': streak,
     })
 
+
+
+# ── Task Notes API ───────────────────────────────────────────────────
+
+@app.route('/api/task-notes/<task_name_key>', methods=['GET'])
+def get_task_notes(task_name_key):
+    """Get all notes for a task name (case-insensitive key)."""
+    key = task_name_key.strip().lower()
+    doc = task_notes_col.find_one({'task_name_key': key})
+    if not doc:
+        return jsonify({'task_name_key': key, 'notes': []})
+    doc['id'] = str(doc.pop('_id'))
+    return jsonify(doc)
+
+
+@app.route('/api/task-notes/<task_name_key>', methods=['POST'])
+def add_task_note(task_name_key):
+    """Add a note to a task name."""
+    key = task_name_key.strip().lower()
+    data = request.json
+    text = data.get('text', '').strip()
+    if not text:
+        return jsonify({'error': 'Note text is required'}), 400
+
+    note_entry = {
+        'text': text,
+        'date': datetime.now().isoformat()
+    }
+
+    existing = task_notes_col.find_one({'task_name_key': key})
+    if existing:
+        task_notes_col.update_one(
+            {'task_name_key': key},
+            {'$push': {'notes': note_entry}}
+        )
+    else:
+        task_notes_col.insert_one({
+            'task_name_key': key,
+            'notes': [note_entry]
+        })
+
+    doc = task_notes_col.find_one({'task_name_key': key})
+    doc['id'] = str(doc.pop('_id'))
+    return jsonify(doc), 201
+
+
+# ── Task Name Search API (Autocomplete) ──────────────────────────────
+
+@app.route('/api/task-names/search', methods=['GET'])
+def search_task_names():
+    """Search past task names for autocomplete (partial, case-insensitive)."""
+    query = request.args.get('q', '').strip().lower()
+    if not query or len(query) < 2:
+        return jsonify([])
+
+    all_tasks = tasks_col.find({}, {'title': 1})
+    seen = set()
+    results = []
+    for t in all_tasks:
+        title = t.get('title', '')
+        key = title.lower()
+        if key not in seen and query in key:
+            seen.add(key)
+            results.append(title)
+        if len(results) >= 10:
+            break
+
+    return jsonify(results)
+
+
+# ── Lifetime Tracking API ────────────────────────────────────────────
+
+@app.route('/api/lifetime-track', methods=['POST'])
+def set_lifetime_tracked():
+    """Mark a task name as lifetime-tracked."""
+    data = request.json
+    task_name_key = data.get('task_name_key', '').strip().lower()
+    display_name = data.get('display_name', '').strip()
+    if not task_name_key:
+        return jsonify({'error': 'task_name_key is required'}), 400
+
+    existing = lifetime_tracking_col.find_one({'task_name_key': task_name_key})
+    if not existing:
+        lifetime_tracking_col.insert_one({
+            'task_name_key': task_name_key,
+            'display_name': display_name or task_name_key,
+            'total_seconds': 0,
+            'sessions': 0
+        })
+
+    doc = lifetime_tracking_col.find_one({'task_name_key': task_name_key})
+    doc['id'] = str(doc.pop('_id'))
+    return jsonify(doc), 201
+
+
+@app.route('/api/lifetime-track/<task_name_key>', methods=['DELETE'])
+def remove_lifetime_tracked(task_name_key):
+    """Remove lifetime tracking for a task name."""
+    key = task_name_key.strip().lower()
+    lifetime_tracking_col.delete_one({'task_name_key': key})
+    return jsonify({'ok': True})
+
+
+@app.route('/api/lifetime-tracking', methods=['GET'])
+def get_lifetime_tracking():
+    """Get all lifetime-tracked tasks with accumulated times."""
+    docs = list(lifetime_tracking_col.find().sort('total_seconds', -1))
+    result = []
+    for d in docs:
+        d['id'] = str(d.pop('_id'))
+        result.append(d)
+    return jsonify(result)
+
+
+@app.route('/api/lifetime-track/accumulate', methods=['POST'])
+def accumulate_time():
+    """Add elapsed seconds to a lifetime-tracked task."""
+    data = request.json
+    task_name_key = data.get('task_name_key', '').strip().lower()
+    seconds = data.get('seconds', 0)
+
+    if not task_name_key or seconds <= 0:
+        return jsonify({'error': 'Valid task_name_key and positive seconds required'}), 400
+
+    existing = lifetime_tracking_col.find_one({'task_name_key': task_name_key})
+    if not existing:
+        return jsonify({'error': 'Task is not lifetime-tracked'}), 404
+
+    lifetime_tracking_col.update_one(
+        {'task_name_key': task_name_key},
+        {'$inc': {'total_seconds': int(seconds), 'sessions': 1}}
+    )
+
+    doc = lifetime_tracking_col.find_one({'task_name_key': task_name_key})
+    doc['id'] = str(doc.pop('_id'))
+    return jsonify(doc)
 
 
 # ── Keep alive (ping self every 14 min) ──────────────────────────────

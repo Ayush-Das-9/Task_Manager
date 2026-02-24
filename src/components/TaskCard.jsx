@@ -11,8 +11,21 @@ export default function TaskCard({ task, isCompleted = false, onComplete, onReop
     const [countdownDone, setCountdownDone] = useState(task.countdown_completed || false)
     const intervalRef = useRef(null)
 
+    // Notes state
+    const [showNotes, setShowNotes] = useState(false)
+    const [notes, setNotes] = useState([])
+    const [noteText, setNoteText] = useState('')
+    const [notesLoading, setNotesLoading] = useState(false)
+
+    // Lifetime tracking state
+    const [isLifetimeTracked, setIsLifetimeTracked] = useState(task.lifetime_tracked || false)
+
+    // Track timer seconds at last start for accumulation
+    const timerStartRef = useRef(timerSeconds)
+
     useEffect(() => {
         if (isRunning && !isCompleted) {
+            timerStartRef.current = timerSeconds
             intervalRef.current = setInterval(() => {
                 setTimerSeconds(prev => {
                     const next = task.timer_type === 'countdown'
@@ -64,6 +77,19 @@ export default function TaskCard({ task, isCompleted = false, onComplete, onReop
     async function handleToggleTimer() {
         try {
             const newState = !isRunning
+
+            // If stopping and lifetime tracked, accumulate time
+            if (!newState && isLifetimeTracked && task.timer_type === 'stopwatch') {
+                const elapsed = Math.abs(timerSeconds - timerStartRef.current)
+                if (elapsed > 0) {
+                    try {
+                        await API.accumulateTime(task.title.toLowerCase(), elapsed)
+                    } catch (e) {
+                        console.log('Time accumulation skipped:', e.message)
+                    }
+                }
+            }
+
             const data = {
                 timer_running: newState ? 1 : 0,
                 timer_started_at: newState ? new Date().toISOString() : null,
@@ -71,6 +97,12 @@ export default function TaskCard({ task, isCompleted = false, onComplete, onReop
             }
             await API.updateTask(task.id, data)
             setIsRunning(newState)
+
+            // Update start ref when starting
+            if (newState) {
+                timerStartRef.current = timerSeconds
+            }
+
             if (onTimerUpdate) onTimerUpdate()
         } catch (e) {
             console.error(e)
@@ -92,6 +124,70 @@ export default function TaskCard({ task, isCompleted = false, onComplete, onReop
             setCountdownDone(false)
             setIsRunning(false)
             if (onTimerUpdate) onTimerUpdate()
+        } catch (e) {
+            console.error(e)
+        }
+    }
+
+    // Notes functions
+    async function loadNotes() {
+        setNotesLoading(true)
+        try {
+            const data = await API.getTaskNotes(task.title.toLowerCase())
+            setNotes(data.notes || [])
+        } catch (e) {
+            console.error(e)
+        }
+        setNotesLoading(false)
+    }
+
+    function toggleNotes() {
+        const next = !showNotes
+        setShowNotes(next)
+        if (next) loadNotes()
+    }
+
+    async function saveNote() {
+        if (!noteText.trim()) return
+        try {
+            const data = await API.addTaskNote(task.title.toLowerCase(), noteText.trim())
+            setNotes(data.notes || [])
+            setNoteText('')
+        } catch (e) {
+            console.error(e)
+        }
+    }
+
+    function formatNoteDate(dateStr) {
+        const d = new Date(dateStr)
+        return d.toLocaleDateString('en-US', {
+            month: 'short', day: 'numeric', year: 'numeric'
+        })
+    }
+
+    // Group notes by date
+    function groupNotesByDate(notesList) {
+        const groups = {}
+        for (const note of notesList) {
+            const dateKey = formatNoteDate(note.date)
+            if (!groups[dateKey]) groups[dateKey] = []
+            groups[dateKey].push(note)
+        }
+        return groups
+    }
+
+    // Lifetime tracking toggle
+    async function toggleLifetimeTracking() {
+        try {
+            if (isLifetimeTracked) {
+                await API.removeLifetimeTracked(task.title.toLowerCase())
+                await API.updateTask(task.id, { lifetime_tracked: false })
+                setIsLifetimeTracked(false)
+            } else {
+                await API.setLifetimeTracked(task.title.toLowerCase(), task.title)
+                await API.updateTask(task.id, { lifetime_tracked: true })
+                setIsLifetimeTracked(true)
+            }
         } catch (e) {
             console.error(e)
         }
@@ -156,73 +252,142 @@ export default function TaskCard({ task, isCompleted = false, onComplete, onReop
         ? Math.round((task.estimated_time / 60) * 10) / 10
         : 0
 
+    const noteGroups = groupNotesByDate(notes)
+
     return (
-        <div className={`task-card ${isCompleted ? 'completed' : ''} ${dueClass} ${task.is_important && !isCompleted ? 'important' : ''}`}>
-            {!isCompleted && (
-                <button
-                    className={`task-important-btn ${task.is_important ? 'active' : ''}`}
-                    onClick={onToggleImportant}
-                    title={task.is_important ? 'Remove priority' : 'Mark as important'}
-                >
-                    {task.is_important ? '🔥' : '○'}
-                </button>
-            )}
-            <div
-                className="task-check"
-                onClick={isCompleted ? onReopen : onComplete}
-            >
-                {isCompleted && '✓'}
-            </div>
-            <div className="task-info">
-                <div className="task-title">
-                    {task.is_important && !isCompleted && <span className="important-label">PRIORITY</span>}
-                    {task.title}
-                </div>
-                <div className="task-meta">
-                    {task.category_name && (
-                        <span
-                            className="task-category-tag"
-                            style={{
-                                background: `${task.category_color}18`,
-                                color: task.category_color
-                            }}
-                        >
-                            {task.category_name}
-                        </span>
-                    )}
-                    {dueText && (
-                        <span className={`task-due ${dueClass}`}>{dueText}</span>
-                    )}
-                    {task.estimated_time && (
-                        <span className="task-estimate">~{task.estimated_time}m</span>
-                    )}
-                    {isCompleted && task.actual_time && (
-                        <span className="task-estimate">{task.actual_time}m</span>
-                    )}
-                </div>
-            </div>
-            {!isCompleted && (
-                <div className="task-timer">
-                    <div className={`timer-ring ${isRunning ? 'spinning' : ''} ${isCountdownDone ? 'countdown-complete-ring' : ''}`}>
-                        <span className={timerCls}>{formatTime(timerSeconds)}</span>
-                    </div>
-                    {isCountdownDone && potentialStars > 0 && (
-                        <span className="star-ready-badge" title={`Complete to earn ${potentialStars} star${potentialStars !== 1 ? 's' : ''}!`}>
-                            ⭐ {potentialStars}
-                        </span>
-                    )}
+        <div className={`task-card-wrapper`}>
+            <div className={`task-card ${isCompleted ? 'completed' : ''} ${dueClass} ${task.is_important && !isCompleted ? 'important' : ''}`}>
+                {!isCompleted && (
                     <button
-                        className={`timer-btn ${isRunning ? 'pause' : 'play'}`}
-                        onClick={handleToggleTimer}
+                        className={`task-important-btn ${task.is_important ? 'active' : ''}`}
+                        onClick={onToggleImportant}
+                        title={task.is_important ? 'Remove priority' : 'Mark as important'}
                     >
-                        {isRunning ? '⏸' : '▶'}
+                        {task.is_important ? '🔥' : '○'}
                     </button>
-                    <button className="timer-btn reset" onClick={handleResetTimer}>
-                        ↺
+                )}
+                <div
+                    className="task-check"
+                    onClick={isCompleted ? onReopen : onComplete}
+                >
+                    {isCompleted && '✓'}
+                </div>
+                <div className="task-info">
+                    <div className="task-title">
+                        {task.is_important && !isCompleted && <span className="important-label">PRIORITY</span>}
+                        {task.title}
+                    </div>
+                    <div className="task-meta">
+                        {task.category_name && (
+                            <span
+                                className="task-category-tag"
+                                style={{
+                                    background: `${task.category_color}18`,
+                                    color: task.category_color
+                                }}
+                            >
+                                {task.category_name}
+                            </span>
+                        )}
+                        {dueText && (
+                            <span className={`task-due ${dueClass}`}>{dueText}</span>
+                        )}
+                        {task.estimated_time && (
+                            <span className="task-estimate">~{task.estimated_time}m</span>
+                        )}
+                        {isCompleted && task.actual_time && (
+                            <span className="task-estimate">{task.actual_time}m</span>
+                        )}
+                    </div>
+                </div>
+
+                {/* Notes & tracking buttons */}
+                <div className="task-actions-row">
+                    <button
+                        className={`task-notes-btn ${showNotes ? 'active' : ''}`}
+                        onClick={toggleNotes}
+                        title="Notes"
+                    >
+                        📝
                     </button>
+                    {!isCompleted && (
+                        <button
+                            className={`task-track-btn ${isLifetimeTracked ? 'active' : ''}`}
+                            onClick={toggleLifetimeTracking}
+                            title={isLifetimeTracked ? 'Stop lifetime tracking' : 'Track lifetime'}
+                        >
+                            {isLifetimeTracked ? '⏱ Tracking' : '⏱'}
+                        </button>
+                    )}
+                </div>
+
+                {!isCompleted && (
+                    <div className="task-timer">
+                        <div className={`timer-ring ${isRunning ? 'spinning' : ''} ${isCountdownDone ? 'countdown-complete-ring' : ''}`}>
+                            <span className={timerCls}>{formatTime(timerSeconds)}</span>
+                        </div>
+                        {isCountdownDone && potentialStars > 0 && (
+                            <span className="star-ready-badge" title={`Complete to earn ${potentialStars} star${potentialStars !== 1 ? 's' : ''}!`}>
+                                ⭐ {potentialStars}
+                            </span>
+                        )}
+                        <button
+                            className={`timer-btn ${isRunning ? 'pause' : 'play'}`}
+                            onClick={handleToggleTimer}
+                        >
+                            {isRunning ? '⏸' : '▶'}
+                        </button>
+                        <button className="timer-btn reset" onClick={handleResetTimer}>
+                            ↺
+                        </button>
+                    </div>
+                )}
+                <button className="task-delete" onClick={onDelete}>✕</button>
+            </div>
+
+            {/* Inline Notes Panel */}
+            {showNotes && (
+                <div className="task-notes-panel">
+                    {notesLoading ? (
+                        <p className="notes-loading">Loading notes...</p>
+                    ) : (
+                        <>
+                            {notes.length > 0 && (
+                                <div className="notes-history">
+                                    {Object.entries(noteGroups).map(([date, dateNotes]) => (
+                                        <div key={date} className="notes-date-group">
+                                            <div className="notes-date-divider">
+                                                <span>{date}</span>
+                                            </div>
+                                            {dateNotes.map((note, i) => (
+                                                <div key={i} className="note-entry">
+                                                    <span className="note-time">
+                                                        {new Date(note.date).toLocaleTimeString('en-US', {
+                                                            hour: '2-digit', minute: '2-digit'
+                                                        })}
+                                                    </span>
+                                                    <span className="note-text">{note.text}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            <div className="notes-input-area">
+                                <textarea
+                                    placeholder="Add a note..."
+                                    value={noteText}
+                                    onChange={e => setNoteText(e.target.value)}
+                                    rows={2}
+                                />
+                                <button className="notes-save-btn" onClick={saveNote}>
+                                    Save note
+                                </button>
+                            </div>
+                        </>
+                    )}
                 </div>
             )}
-            <button className="task-delete" onClick={onDelete}>✕</button>
         </div>
     )
 }

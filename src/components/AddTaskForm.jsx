@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import * as API from '../services/api'
 
 export default function AddTaskForm({ categories, onAdd }) {
@@ -9,6 +9,13 @@ export default function AddTaskForm({ categories, onAdd }) {
     const [countdownMins, setCountdownMins] = useState('')
     const [predictions, setPredictions] = useState(null)
     const [predictionTimeout, setPredictionTimeout] = useState(null)
+
+    // Autocomplete state
+    const [suggestions, setSuggestions] = useState([])
+    const [showSuggestions, setShowSuggestions] = useState(false)
+    const [suggestTimeout, setSuggestTimeout] = useState(null)
+    const inputRef = useRef(null)
+    const suggestionsRef = useRef(null)
 
     useEffect(() => {
         if (title.length < 3) {
@@ -45,6 +52,47 @@ export default function AddTaskForm({ categories, onAdd }) {
         return () => clearTimeout(timeout)
     }, [title])
 
+    // Autocomplete effect
+    useEffect(() => {
+        if (title.length < 2) {
+            setSuggestions([])
+            setShowSuggestions(false)
+            return
+        }
+
+        if (suggestTimeout) clearTimeout(suggestTimeout)
+
+        const timeout = setTimeout(async () => {
+            try {
+                const results = await API.searchTaskNames(title)
+                setSuggestions(results)
+                setShowSuggestions(results.length > 0)
+            } catch (e) {
+                console.error(e)
+            }
+        }, 300)
+
+        setSuggestTimeout(timeout)
+        return () => clearTimeout(timeout)
+    }, [title])
+
+    // Close suggestions on outside click
+    useEffect(() => {
+        function handleClickOutside(e) {
+            if (suggestionsRef.current && !suggestionsRef.current.contains(e.target) &&
+                inputRef.current && !inputRef.current.contains(e.target)) {
+                setShowSuggestions(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
+
+    function selectSuggestion(name) {
+        setTitle(name)
+        setShowSuggestions(false)
+    }
+
     async function handleSubmit(e) {
         e.preventDefault()
         if (!title.trim()) return
@@ -66,6 +114,8 @@ export default function AddTaskForm({ categories, onAdd }) {
         setTimerType('stopwatch')
         setCountdownMins('')
         setPredictions(null)
+        setSuggestions([])
+        setShowSuggestions(false)
     }
 
     function applyCategoryPrediction() {
@@ -77,8 +127,9 @@ export default function AddTaskForm({ categories, onAdd }) {
     return (
         <section className="add-task-section">
             <form className="add-task-form" onSubmit={handleSubmit}>
-                <div className="form-row">
+                <div className="form-row" style={{ position: 'relative' }}>
                     <input
+                        ref={inputRef}
                         type="text"
                         id="task-title"
                         placeholder="Add a task..."
@@ -86,8 +137,25 @@ export default function AddTaskForm({ categories, onAdd }) {
                         required
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
+                        onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
                     />
                     <button type="submit" className="btn-add">Add</button>
+
+                    {/* Autocomplete dropdown */}
+                    {showSuggestions && suggestions.length > 0 && (
+                        <div className="autocomplete-dropdown" ref={suggestionsRef}>
+                            {suggestions.map((name, i) => (
+                                <div
+                                    key={i}
+                                    className="autocomplete-item"
+                                    onClick={() => selectSuggestion(name)}
+                                >
+                                    <span className="autocomplete-icon">🕐</span>
+                                    <span className="autocomplete-text">{name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
                 <div className="form-row form-details">
                     <select

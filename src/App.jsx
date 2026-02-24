@@ -11,6 +11,7 @@ import StarCounter from './components/StarCounter'
 import StarBurst from './components/StarBurst'
 import StarHistory from './components/StarHistory'
 import ProgressPanel from './components/ProgressPanel'
+import SidePanel from './components/SidePanel'
 
 function App() {
     const [tasks, setTasks] = useState([])
@@ -203,87 +204,91 @@ function App() {
                 onClose={() => setReminders({ overdue: [], due_soon: [] })}
             />
 
-            <div className="app-container">
-                <header className="app-header">
-                    <div className="header-left">
-                        <button
-                            className="progress-btn"
-                            onClick={() => setShowProgress(true)}
-                        >
-                            📈 Progress
-                        </button>
-                    </div>
-                    <h1>📋 Task Manager</h1>
-                    <div className="header-stats">
-                        <div onClick={() => setShowStarHistory(true)} style={{ cursor: 'pointer' }}>
-                            <StarCounter
-                                totalStars={todayStars}
-                                isAnimating={starAnimating}
-                            />
+            <div className="app-layout">
+                <div className="app-container">
+                    <header className="app-header">
+                        <div className="header-left">
+                            <button
+                                className="progress-btn"
+                                onClick={() => setShowProgress(true)}
+                            >
+                                📈 Progress
+                            </button>
                         </div>
-                        <span className="stat-badge">{stats.active} active</span>
-                        <span className="stat-badge">{stats.completed} done</span>
-                    </div>
-                </header>
-
-                <AddTaskForm
-                    categories={categories}
-                    onAdd={handleAddTask}
-                />
-
-                <InsightsPanel
-                    show={showInsights}
-                    onToggle={() => setShowInsights(!showInsights)}
-                />
-
-                <CategoryTabs
-                    categories={categories}
-                    activeFilter={activeFilter}
-                    onFilterChange={setActiveFilter}
-                    onManageCategories={() => setShowCategoryModal(true)}
-                />
-
-                <section className="tasks-section">
-                    <div className="task-list">
-                        {sortedActive.length > 0 ? (
-                            sortedActive.map(task => (
-                                <TaskCard
-                                    key={task.id}
-                                    task={task}
-                                    onComplete={() => openCompleteModal(task)}
-                                    onDelete={() => handleDeleteTask(task.id)}
-                                    onTimerUpdate={handleTimerUpdate}
-                                    onCountdownComplete={handleCountdownComplete}
-                                    onToggleImportant={() => handleToggleImportant(task.id)}
+                        <h1>📋 Task Manager</h1>
+                        <div className="header-stats">
+                            <div onClick={() => setShowStarHistory(true)} style={{ cursor: 'pointer' }}>
+                                <StarCounter
+                                    totalStars={todayStars}
+                                    isAnimating={starAnimating}
                                 />
-                            ))
-                        ) : (
-                            <p style={{ textAlign: 'center', color: '#ccc', padding: '30px' }}>—</p>
-                        )}
-                    </div>
+                            </div>
+                            <span className="stat-badge">{stats.active} active</span>
+                            <span className="stat-badge">{stats.completed} done</span>
+                        </div>
+                    </header>
 
-                    <div
-                        className="completed-header"
-                        onClick={() => setShowCompleted(!showCompleted)}
-                    >
-                        <span>✓ Completed</span>
-                        <span>{showCompleted ? '▾' : '▸'}</span>
-                    </div>
+                    <AddTaskForm
+                        categories={categories}
+                        onAdd={handleAddTask}
+                    />
 
-                    {!showCompleted ? null : (
+                    <InsightsPanel
+                        show={showInsights}
+                        onToggle={() => setShowInsights(!showInsights)}
+                    />
+
+                    <CategoryTabs
+                        categories={categories}
+                        activeFilter={activeFilter}
+                        onFilterChange={setActiveFilter}
+                        onManageCategories={() => setShowCategoryModal(true)}
+                    />
+
+                    <section className="tasks-section">
                         <div className="task-list">
-                            {filteredCompleted.map(task => (
-                                <TaskCard
-                                    key={task.id}
-                                    task={task}
-                                    isCompleted={true}
-                                    onReopen={() => handleReopenTask(task.id)}
-                                    onDelete={() => handleDeleteTask(task.id)}
-                                />
-                            ))}
+                            {sortedActive.length > 0 ? (
+                                sortedActive.map(task => (
+                                    <TaskCard
+                                        key={task.id}
+                                        task={task}
+                                        onComplete={() => openCompleteModal(task)}
+                                        onDelete={() => handleDeleteTask(task.id)}
+                                        onTimerUpdate={handleTimerUpdate}
+                                        onCountdownComplete={handleCountdownComplete}
+                                        onToggleImportant={() => handleToggleImportant(task.id)}
+                                    />
+                                ))
+                            ) : (
+                                <p style={{ textAlign: 'center', color: '#ccc', padding: '30px' }}>—</p>
+                            )}
                         </div>
-                    )}
-                </section>
+
+                        <div
+                            className="completed-header"
+                            onClick={() => setShowCompleted(!showCompleted)}
+                        >
+                            <span>✓ Completed</span>
+                            <span>{showCompleted ? '▾' : '▸'}</span>
+                        </div>
+
+                        {!showCompleted ? null : (
+                            <div className="task-list">
+                                {filteredCompleted.map(task => (
+                                    <TaskCard
+                                        key={task.id}
+                                        task={task}
+                                        isCompleted={true}
+                                        onReopen={() => handleReopenTask(task.id)}
+                                        onDelete={() => handleDeleteTask(task.id)}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </section>
+                </div>
+
+                <SidePanel />
             </div>
 
             {showCategoryModal && (
