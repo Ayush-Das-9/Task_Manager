@@ -1,29 +1,24 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import * as API from '../services/api'
+import { useTracking } from '../hooks/useTrackingStore.jsx'
 
 export default function ProgressPanel({ onClose }) {
+    const { registry, addKeyword, removeKeyword } = useTracking()
+
+    // Add keyword input
+    const [input, setInput] = useState('')
+
+    // History search state
     const [keyword, setKeyword] = useState('')
     const [data, setData] = useState(null)
     const [loading, setLoading] = useState(false)
     const [searched, setSearched] = useState(false)
 
-    // Lifetime tracking state
-    const [trackedTasks, setTrackedTasks] = useState([])
-    const [trackingLoading, setTrackingLoading] = useState(true)
-
-    useEffect(() => {
-        loadTrackedTasks()
-    }, [])
-
-    async function loadTrackedTasks() {
-        setTrackingLoading(true)
-        try {
-            const result = await API.getLifetimeTracking()
-            setTrackedTasks(result)
-        } catch (err) {
-            console.error(err)
-        }
-        setTrackingLoading(false)
+    function handleAdd(e) {
+        e.preventDefault()
+        if (!input.trim()) return
+        addKeyword(input.trim())
+        setInput('')
     }
 
     async function handleSearch(e) {
@@ -44,13 +39,32 @@ export default function ProgressPanel({ onClose }) {
         const hrs = Math.floor(seconds / 3600)
         const mins = Math.floor((seconds % 3600) / 60)
         if (hrs > 0) return `${hrs}h ${mins}m`
-        return `${mins}m`
+        if (mins > 0) return `${mins}m`
+        return `${seconds}s`
     }
 
-    const maxMins = data ? Math.max(...data.days.map(d => d.minutes), 1) : 1
-    const maxTrackedSeconds = trackedTasks.length > 0
-        ? Math.max(...trackedTasks.map(t => t.total_seconds), 1)
+    function formatLastActive(timestamp) {
+        if (!timestamp) return 'never'
+        const d = new Date(timestamp)
+        const now = new Date()
+        const diffMs = now - d
+        const diffHrs = diffMs / 3.6e6
+        if (diffHrs < 1) {
+            const mins = Math.round(diffMs / 60000)
+            return mins <= 1 ? 'just now' : `${mins}m ago`
+        }
+        if (diffHrs < 24) return `${Math.round(diffHrs)}h ago`
+        const days = Math.floor(diffHrs / 24)
+        if (days === 1) return 'yesterday'
+        if (days < 7) return `${days} days ago`
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    }
+
+    const maxSeconds = registry.length > 0
+        ? Math.max(...registry.map(e => e.lifetimeSeconds), 1)
         : 1
+
+    const maxMins = data ? Math.max(...data.days.map(d => d.minutes), 1) : 1
 
     return (
         <div className="progress-overlay" onClick={onClose}>
@@ -60,107 +74,129 @@ export default function ProgressPanel({ onClose }) {
                     <button className="prog-close" onClick={onClose}>✕</button>
                 </div>
 
-                <form className="prog-search" onSubmit={handleSearch}>
+                {/* ── Add Keyword ── */}
+                <form className="tracker-add-form" onSubmit={handleAdd}>
                     <input
                         type="text"
-                        placeholder='Search task keyword (e.g. "DSA")'
-                        value={keyword}
-                        onChange={e => setKeyword(e.target.value)}
+                        placeholder='Add keyword to track (e.g. "DSA", "ML")...'
+                        value={input}
+                        onChange={e => setInput(e.target.value)}
                         autoFocus
                     />
-                    <button type="submit" className="btn-add">Track</button>
+                    <button type="submit" className="btn-add">+ Track</button>
                 </form>
 
-                {loading && <p className="prog-loading">Loading...</p>}
-
-                {data && !loading && (
-                    <>
-                        <div className="prog-stats">
-                            <div className="prog-stat">
-                                <span className="prog-stat-value">{Math.round(data.total_minutes / 60 * 10) / 10}h</span>
-                                <span className="prog-stat-label">Total Time</span>
-                            </div>
-                            <div className="prog-stat">
-                                <span className="prog-stat-value">{data.total_tasks}</span>
-                                <span className="prog-stat-label">Tasks</span>
-                            </div>
-                            <div className="prog-stat">
-                                <span className="prog-stat-value">{data.avg_per_day}m</span>
-                                <span className="prog-stat-label">Avg/Day</span>
-                            </div>
-                            <div className="prog-stat">
-                                <span className="prog-stat-value">{data.streak}🔥</span>
-                                <span className="prog-stat-label">Streak</span>
-                            </div>
-                        </div>
-
-                        <div className="prog-chart">
-                            <div className="prog-chart-title">
-                                Daily time for "<strong>{data.keyword}</strong>" (last 14 days)
-                            </div>
-                            <div className="prog-bars">
-                                {data.days.map((day, i) => (
-                                    <div key={i} className="prog-bar-col" title={`${day.date}: ${day.minutes} min`}>
-                                        <span className="prog-bar-value">
-                                            {day.minutes > 0 ? `${day.minutes}m` : ''}
-                                        </span>
-                                        <div
-                                            className="prog-bar"
-                                            style={{
-                                                height: `${Math.max((day.minutes / maxMins) * 100, 3)}%`,
-                                                background: day.minutes > 0
-                                                    ? 'linear-gradient(180deg, #4f46e5, #818cf8)'
-                                                    : 'var(--border)'
-                                            }}
-                                        />
-                                        <span className="prog-bar-label">{day.day}</span>
+                {/* ── Registry Entries ── */}
+                {registry.length > 0 ? (
+                    <div className="registry-list">
+                        {registry.map((entry, i) => (
+                            <div key={entry.id} className="registry-item">
+                                <div className="registry-item-main">
+                                    <div className="registry-item-left">
+                                        <span className="registry-rank">#{i + 1}</span>
+                                        <span className="registry-keyword">{entry.displayName}</span>
                                     </div>
-                                ))}
-                            </div>
-                        </div>
-                    </>
-                )}
-
-                {searched && !loading && data && data.total_tasks === 0 && (
-                    <p className="prog-empty">No completed tasks found matching "{keyword}"</p>
-                )}
-
-                {/* ── Total Time Tracking Section ── */}
-                <div className="lifetime-tracking-section">
-                    <div className="lifetime-header">
-                        <h4>🕐 Total Time Tracking</h4>
-                        <span className="lifetime-subtitle">Lifetime-tracked tasks</span>
-                    </div>
-
-                    {trackingLoading ? (
-                        <p className="prog-loading">Loading tracked tasks...</p>
-                    ) : trackedTasks.length === 0 ? (
-                        <p className="lifetime-empty">
-                            No tasks are being tracked yet. Click the ⏱ button on any task to start lifetime tracking.
-                        </p>
-                    ) : (
-                        <div className="lifetime-list">
-                            {trackedTasks.map((task, i) => (
-                                <div key={task.id} className="lifetime-item">
-                                    <div className="lifetime-item-header">
-                                        <span className="lifetime-rank">#{i + 1}</span>
-                                        <span className="lifetime-name">{task.display_name}</span>
-                                        <span className="lifetime-time">
-                                            {formatTotalTime(task.total_seconds)}
-                                        </span>
+                                    <div className="registry-item-right">
+                                        <span className="registry-time">{formatTotalTime(entry.lifetimeSeconds)}</span>
+                                        <button
+                                            className="registry-delete"
+                                            onClick={() => removeKeyword(entry.id)}
+                                            title="Remove from tracking"
+                                        >
+                                            ✕
+                                        </button>
                                     </div>
-                                    <div className="lifetime-bar-wrapper">
-                                        <div
-                                            className="lifetime-bar"
-                                            style={{
-                                                width: `${Math.max((task.total_seconds / maxTrackedSeconds) * 100, 2)}%`
-                                            }}
-                                        />
-                                    </div>
-                                    <span className="lifetime-sessions">{task.sessions} session{task.sessions !== 1 ? 's' : ''}</span>
                                 </div>
-                            ))}
-                        </div>
+                                <div className="registry-bar-wrapper">
+                                    <div
+                                        className="registry-bar"
+                                        style={{ width: `${Math.max((entry.lifetimeSeconds / maxSeconds) * 100, 2)}%` }}
+                                    />
+                                </div>
+                                <div className="registry-meta">
+                                    <span>{entry.sessionCount} session{entry.sessionCount !== 1 ? 's' : ''}</span>
+                                    <span>Last: {formatLastActive(entry.lastActive)}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="tracker-empty">
+                        <p>No keywords being tracked yet.</p>
+                        <p className="tracker-empty-hint">
+                            Add a keyword above (e.g. "DSA"). Any task with that word in its name will automatically accumulate time here.
+                        </p>
+                    </div>
+                )}
+
+                {/* ── Divider ── */}
+                <div className="tracker-divider" />
+
+                {/* ── History Search ── */}
+                <div className="tracker-history-section">
+                    <h4>📊 Completed Task History</h4>
+                    <form className="prog-search" onSubmit={handleSearch}>
+                        <input
+                            type="text"
+                            placeholder='Search completed tasks (e.g. "DSA")'
+                            value={keyword}
+                            onChange={e => setKeyword(e.target.value)}
+                        />
+                        <button type="submit" className="btn-add">Search</button>
+                    </form>
+
+                    {loading && <p className="prog-loading">Loading...</p>}
+
+                    {data && !loading && (
+                        <>
+                            <div className="prog-stats">
+                                <div className="prog-stat">
+                                    <span className="prog-stat-value">{Math.round(data.total_minutes / 60 * 10) / 10}h</span>
+                                    <span className="prog-stat-label">Total Time</span>
+                                </div>
+                                <div className="prog-stat">
+                                    <span className="prog-stat-value">{data.total_tasks}</span>
+                                    <span className="prog-stat-label">Tasks</span>
+                                </div>
+                                <div className="prog-stat">
+                                    <span className="prog-stat-value">{data.avg_per_day}m</span>
+                                    <span className="prog-stat-label">Avg/Day</span>
+                                </div>
+                                <div className="prog-stat">
+                                    <span className="prog-stat-value">{data.streak}🔥</span>
+                                    <span className="prog-stat-label">Streak</span>
+                                </div>
+                            </div>
+
+                            <div className="prog-chart">
+                                <div className="prog-chart-title">
+                                    Daily time for "<strong>{data.keyword}</strong>" (last 14 days)
+                                </div>
+                                <div className="prog-bars">
+                                    {data.days.map((day, i) => (
+                                        <div key={i} className="prog-bar-col" title={`${day.date}: ${day.minutes} min`}>
+                                            <span className="prog-bar-value">
+                                                {day.minutes > 0 ? `${day.minutes}m` : ''}
+                                            </span>
+                                            <div
+                                                className="prog-bar"
+                                                style={{
+                                                    height: `${Math.max((day.minutes / maxMins) * 100, 3)}%`,
+                                                    background: day.minutes > 0
+                                                        ? 'linear-gradient(180deg, #4f46e5, #818cf8)'
+                                                        : 'var(--border)'
+                                                }}
+                                            />
+                                            <span className="prog-bar-label">{day.day}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {searched && !loading && data && data.total_tasks === 0 && (
+                        <p className="prog-empty">No completed tasks found matching "{keyword}"</p>
                     )}
                 </div>
             </div>

@@ -12,6 +12,7 @@ import StarBurst from './components/StarBurst'
 import StarHistory from './components/StarHistory'
 import ProgressPanel from './components/ProgressPanel'
 import SidePanel from './components/SidePanel'
+import { TrackingProvider } from './hooks/useTrackingStore.jsx'
 
 function App() {
     const [tasks, setTasks] = useState([])
@@ -198,11 +199,7 @@ function App() {
     }
 
     return (
-        <>
-            <ReminderBanner
-                reminders={reminders}
-                onClose={() => setReminders({ overdue: [], due_soon: [] })}
-            />
+        <TrackingProvider>
 
             <div className="app-layout">
                 <div className="app-container">
@@ -328,7 +325,7 @@ function App() {
             {showProgress && (
                 <ProgressPanel onClose={() => setShowProgress(false)} />
             )}
-        </>
+        </TrackingProvider>
     )
 }
 

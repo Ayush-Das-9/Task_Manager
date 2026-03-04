@@ -1,0 +1,54 @@
+pos = [(3,1), (3,-1),(6,1),(6,-1)]
+neg = [(1,0), (0,1),(0,-1),(-1,0)]
+
+
+def dot(p, w):
+    return p[0]*w[0] + p[1]*w[1]
+
+
+def check(w, b):
+
+    for p in pos:
+        if dot(p,w) + b < 1:
+            return False
+
+    for p in neg:
+        if dot(p,w) + b > -1:
+            return False
+
+    return True
+
+
+best_w = None
+best_b = None
+best_margin = 0
+
+
+for wx in range(-5,10):
+    for wy in range(-5,10):
+
+        if wx==0 and wy==0:
+            continue
+
+        for b in range(-20,20):
+
+            w = (wx, wy)
+
+            if check(w,b):
+
+                margin = 2 / ( (wx**2 + wy**2)**0.5 )
+
+                if margin > best_margin:
+
+                    best_margin = margin
+                    best_w = w
+                    best_b = b
+
+
+print("Name : Diljot Singh\nCRN : 2315053\nURN : 2302509\n")
+print("Support Vector Equation:")
+print("w =", best_w)
+print("b =", best_b)
+
+print("Final equation:")
+print(best_w[0],"x +",best_w[1],"y +",best_b,"= 0")

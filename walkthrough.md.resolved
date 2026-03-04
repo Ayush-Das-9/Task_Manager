@@ -1,0 +1,197 @@
+# Task Manager — Architecture & Flow Diagram
+
+## High-Level Architecture
+
+```mermaid
+graph TB
+    subgraph Frontend["⚛️ React Frontend (Vite)"]
+        App["App.jsx — Main Orchestrator"]
+        API["api.js — API Service Layer"]
+        
+        subgraph Components["UI Components"]
+            AddTask["AddTaskForm"]
+            TaskCard["TaskCard"]
+            CatTabs["CategoryTabs"]
+            CatModal["CategoryModal"]
+            CompleteModal["CompleteTaskModal"]
+            Reminder["ReminderBanner"]
+            Insights["InsightsPanel"]
+            Progress["ProgressPanel"]
+            SidePanel["SidePanel"]
+            StarCounter["StarCounter"]
+            StarBurst["StarBurst"]
+            StarHistory["StarHistory"]
+        end
+    end
+
+    subgraph Backend["🐍 Flask Backend (app.py)"]
+        Flask["Flask Server :5000"]
+        Learner["learner.py — ML Prediction Engine"]
+    end
+
+    subgraph DB["🍃 MongoDB"]
+        Tasks[(tasks)]
+        Categories[(categories)]
+        Stars[(star_log)]
+        Notes[(task_notes)]
+        Lifetime[(lifetime_tracking)]
+    end
+
+    App --> API
+    Components --> App
+    API -- "HTTP REST" --> Flask
+    Flask --> DB
+    Flask --> Learner
+    Learner --> DB
+```
+
+---
+
+## Data Flow — Creating a Task
+
+```mermaid
+sequenceDiagram
+    participant U as 👤 User
+    participant Form as AddTaskForm
+    participant App as App.jsx
+    participant API as api.js
+    participant Flask as Flask Server
+    participant ML as learner.py
+    participant DB as MongoDB
+
+    U->>Form: Fill title, time, category
+    Form->>API: predict(title)
+    API->>Flask: GET /api/predict?title=...
+    Flask->>ML: predict_category() + predict_time()
+    ML->>DB: Query completed tasks
+    DB-->>ML: Historical data
+    ML-->>Flask: {category, confidence, estimated_minutes}
+    Flask-->>API: Prediction result
+    API-->>Form: Auto-suggest category & time
+
+    U->>Form: Submit task
+    Form->>App: handleAddTask(taskData)
+    App->>API: createTask(data)
+    API->>Flask: POST /api/tasks
+    Flask->>DB: Insert new task
+    DB-->>Flask: ✅ Created
+    Flask-->>API: New task object
+    API-->>App: Success
+    App->>App: Refresh task list
+```
+
+---
+
+## Data Flow — Completing a Task & Earning Stars
+
+```mermaid
+sequenceDiagram
+    participant U as 👤 User
+    participant TC as TaskCard
+    participant App as App.jsx
+    participant API as api.js
+    participant Flask as Flask Server
+    participant DB as MongoDB
+
+    TC->>TC: Countdown timer running ⏳
+    TC-->>App: handleCountdownComplete(task)
+    App->>App: openCompleteModal(task)
+    U->>App: Enter actual time
+    App->>API: updateTask(id, {done: true, actual_time})
+    API->>Flask: PUT /api/tasks/:id
+    Flask->>DB: Update task → done
+    Flask-->>API: ✅ Updated
+
+    App->>API: earnStars(taskId)
+    API->>Flask: POST /api/stars/earn
+    Flask->>DB: Calculate stars (1 star/hr)
+    Flask->>DB: Insert star_log entry
+    Flask-->>API: {stars_earned, total_today}
+    API-->>App: Star count
+    App->>App: StarBurst animation 🌟
+    App->>App: Update StarCounter
+```
+
+---
+
+## Component Interaction Map
+
+```mermaid
+graph LR
+    subgraph Core["Core Flow"]
+        AddTask["➕ AddTaskForm"] -->|creates| App["🧠 App.jsx"]
+        App -->|renders| TaskCard["📋 TaskCard"]
+        TaskCard -->|complete| CompleteModal["✅ CompleteTaskModal"]
+        CompleteModal -->|stars| StarBurst["💫 StarBurst"]
+    end
+
+    subgraph Filtering["Filtering"]
+        CatTabs["🏷️ CategoryTabs"] -->|filter| App
+        CatModal["📁 CategoryModal"] -->|add/delete| App
+    end
+
+    subgraph Sidebar["Right Sidebar (SidePanel)"]
+        SidePanel["📊 SidePanel"]
+        SidePanel --> Insights["💡 InsightsPanel"]
+        SidePanel --> Progress["📈 ProgressPanel"]
+        SidePanel --> StarHistory["⭐ StarHistory"]
+    end
+
+    subgraph TopBar["Top Bar"]
+        StarCounter["🏆 StarCounter"]
+        Reminder["🔔 ReminderBanner"]
+    end
+
+    App --> SidePanel
+    App --> StarCounter
+    App --> Reminder
+```
+
+---
+
+## API Routes Map
+
+| Method | Route | Purpose | Component |
+|--------|-------|---------|-----------|
+| **GET** | `/api/tasks` | Fetch all tasks | App |
+| **POST** | `/api/tasks` | Create task | AddTaskForm |
+| **PUT** | `/api/tasks/:id` | Update/complete task | TaskCard |
+| **DELETE** | `/api/tasks/:id` | Delete task | TaskCard |
+| **GET** | `/api/categories` | List categories | CategoryTabs |
+| **POST** | `/api/categories` | Create category | CategoryModal |
+| **DELETE** | `/api/categories/:id` | Delete category | CategoryModal |
+| **GET** | `/api/predict` | ML predictions | AddTaskForm |
+| **GET** | `/api/reminders` | Upcoming deadlines | ReminderBanner |
+| **GET** | `/api/insights` | Daily patterns | InsightsPanel |
+| **POST** | `/api/stars/earn` | Award stars | App |
+| **GET** | `/api/stars/today` | Today's star count | StarCounter |
+| **GET** | `/api/stars/week` | Weekly star history | StarHistory |
+| **GET** | `/api/progress` | Time tracking chart | ProgressPanel |
+| **GET/POST** | `/api/task-notes/:key` | Per-task notes | TaskCard |
+| **GET** | `/api/task-names/search` | Autocomplete | AddTaskForm |
+| **POST** | `/api/lifetime-track` | Mark lifetime-tracked | SidePanel |
+| **GET** | `/api/lifetime-tracking` | Lifetime totals | SidePanel |
+
+---
+
+## ML Prediction Engine ([learner.py](file:///e:/Ai_handler/learner.py))
+
+```mermaid
+graph TD
+    Title["Task Title Input"] --> Tokenize["tokenize() — Remove stop words"]
+    Tokenize --> CatPredict["predict_category()"]
+    Tokenize --> TimePredict["predict_time()"]
+
+    CatPredict --> Direct["1. Direct Match — Title word = Category name?"]
+    CatPredict --> TFIDF["2. TF-IDF Scoring — Keyword frequency from history"]
+    Direct --> Result["Best category + confidence + alternatives"]
+    TFIDF --> Result
+
+    TimePredict --> Median["Weighted median of actual durations from similar tasks"]
+    Median --> TimeResult["Estimated minutes + data points"]
+
+    subgraph Insights["get_daily_insights()"]
+        Patterns["Analyze time-of-day & day-of-week patterns"]
+        Suggestions["Generate scheduling suggestions"]
+    end
+```
